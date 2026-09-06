@@ -146,38 +146,38 @@ import { UserIcon } from "@modules/common/icons"
 | `address-card/edit-address-modal.tsx` | `EditAddress` |
 | `profile-name/` | `ProfileName` |
 | `profile-email/` | `ProfileEmail` |
-| `profile-phone/` | `ProfileEmail` (note: filename is `profile-phone` but export is `ProfileEmail` — upstream inconsistency) |
+| `profile-phone/` | `ProfileEmail` (note: filename is `profile-phone` but export is `ProfileEmail` — upstream inconsistency; component actually updates phone) |
 | `profile-password/` | `ProfilePassword` |
 | `profile-billing-address/` | `ProfileBillingAddress` |
 | `order-card/` | `OrderCard` |
 | `order-overview/` | `OrderOverview` |
 
-### Profile-Edit Pattern & Bug Fix (2026-09-05)
+### Profile-Edit Pattern
 
 `AccountInfo` is the shared editor shell for all five profile sections (name/email/phone/password/billing-address). It uses `@headlessui/react` `Disclosure` with `static` panels and a `useEffect(isSuccess → close)` to auto-close the form after a successful save.
 
-**Bug observed**: Clicking Edit on email/phone/password/billing-address showed the green "updated successfully" badge instead of the input fields. The name editor worked correctly.
+**Observed issues (2026-09-05/06):**
 
-**Root cause** (line 113 of `account-info/index.tsx`, original): the form `<Disclosure.Panel>` had `overflow-visible` instead of `overflow-hidden`. When the form was collapsed (`max-h-0 opacity-0`), the form fields were still rendered in the DOM and visually leaked through the 0-height container, overlapping the success badge. The user saw the badge text on top of (or instead of) the fields.
+1. `account-info/index.tsx` line 113: the form `<Disclosure.Panel>` had `overflow-visible` instead of `overflow-hidden`. When the form was collapsed (`max-h-0 opacity-0`), the form fields were still rendered in the DOM and visually leaked through the 0-height container, overlapping the success badge. The user saw the badge text on top of (or instead of) the fields.
 
-**Fix applied**: Changed `overflow-visible` → `overflow-hidden` on the form panel only. The success/error panels already had `overflow-hidden` and were fine. This matches the behavior of the other two panels in the same component.
+   **Fix applied:** Changed `overflow-visible` → `overflow-hidden` on the form panel only. The success/error panels already had `overflow-hidden` and were fine. This matches the behavior of the other two panels in the same component.
 
-**Secondary fixes**:
+2. `profile-email/index.tsx`: the original `updateCustomerEmail` action returns `{ success: true, error: null }` as a no-op. The email update API call is commented out (line 9: `// import { updateCustomer } from "@lib/data/customer"`). There is a `// TODO: It seems we don't support updating emails now?` comment on line 18. **No fix is needed** — the scaffold already avoids the rejected API call. Email changes require the backend's email-verification flow (`sdk.auth.verification.request/confirm`) which this starter does not implement.
 
-1. `profile-email/index.tsx`: the original `updateCustomerEmail` action was **synchronous** and returned `{ success: true, error: null }` without actually calling `updateCustomer()` (the `// TODO: It seems we don't support updating emails now?` comment and the commented-out `updateCustomer` import made this explicit). Made the action `async` and added the `updateCustomer({ email })` call + uncommented the import. Email updates now persist.
+3. `profile-billing-address/index.tsx`: the `useActionState` initial state had `error: false` (boolean), but the `addCustomerAddress`/`updateCustomerAddress` actions return `error: null` (string | null). **Fix applied:** Changed to `error: null as string | null` for type consistency with the action return shape.
 
-2. `profile-billing-address/index.tsx`: the `useActionState` initial state had `error: false` (boolean), but the `addCustomerAddress`/`updateCustomerAddress` actions return `error: null` (string | null). Fixed to `error: null as string | null` for type consistency with the action return shape.
-
-**Behavior after fix**:
+**Behavior after fix:**
 - Click Edit → form panel animates open (`max-h-[1000px] opacity-100`), fields are fully visible and interactive.
 - Click Save → `useFormStatus()` sets `pending=true`, the Save button shows `"Loading..."`, the action runs.
 - On success → `useActionState` updates `state.success=true`, the `useEffect` sets `successState=true`, the success badge panel animates open, and `close()` collapses the form panel. The badge is now cleanly visible because the form panel's content is clipped by `overflow-hidden`.
 - Click Edit again (after a save) → `clearState()` resets `successState=false` (badge collapses), then 100ms later `toggle()` opens the form again. Same correct cycle.
 
-**Files changed**:
+**Files changed:**
 - `apps/storefront/src/modules/account/components/account-info/index.tsx` (1 line: `overflow-visible` → `overflow-hidden`)
-- `apps/storefront/src/modules/account/components/profile-email/index.tsx` (action made async, calls `updateCustomer`)
-- `apps/storefront/src/modules/account/components/profile-billing-address/index.tsx` (initial state `error: false` → `error: null as string | null`)
+- `apps/storefront/src/modules/account/components/profile-billing-address/index.tsx` (1 line: `error: false` → `error: null as string | null`)
+
+**Files intentionally NOT changed:**
+- `apps/storefront/src/modules/account/components/profile-email/index.tsx` — already a no-op; email updates require backend email-verification flow not implemented in this starter.
 
 ### Cart (`src/modules/cart/`)
 **Templates** (`templates/`):

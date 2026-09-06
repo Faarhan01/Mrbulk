@@ -161,7 +161,7 @@ export default defineLink(
 
 **File**: `src/migration-scripts/initial-data-seed.ts`
 
-Executed automatically during `pnpm exec medusa db:migrate`. Creates (verified in `medusa_myshop_fresh`):
+Executed automatically during `pnpm exec medusa db:migrate`. Creates standard seed data:
 
 | Entity | Count | Details |
 |---|---|---|
@@ -183,30 +183,26 @@ Executed automatically during `pnpm exec medusa db:migrate`. Creates (verified i
 
 ## Environment Variables
 
-`apps/backend/.env` (10 keys, in this order):
+The backend requires these keys in `apps/backend/.env`:
 
-| # | Key | Value in this install |
-|---|---|---|
-| 1 | `MEDUSA_ADMIN_ONBOARDING_TYPE` | `nextjs` |
-| 2 | `STORE_CORS` | `http://localhost:8000,https://docs.medusajs.com` |
-| 3 | `ADMIN_CORS` | `http://localhost:5173,http://localhost:9000,https://docs.medusajs.com` |
-| 4 | `AUTH_CORS` | `http://localhost:5173,http://localhost:9000,http://localhost:8000,https://docs.medusajs.com` |
-| 5 | `REDIS_URL` | `redis://localhost:6379` |
-| 6 | `JWT_SECRET` | `supersecret` |
-| 7 | `COOKIE_SECRET` | `supersecret` |
-| 8 | `AUTH_MFA_ENCRYPTION_KEY` | `3bd5047a9671b3d61d4eff191aabe69186dae96fe72a94689325114195ed98f4` |
-| 9 | `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/medusa_myshop_fresh` |
-| 10 | `MEDUSA_ADMIN_ONBOARDING_NEXTJS_DIRECTORY` | `C:\Users\faarh\OneDrive\Documents\Latest\medusjs\myshop-fresh\apps\storefront` |
+| Key | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection |
+| `JWT_SECRET` | JWT signing secret |
+| `COOKIE_SECRET` | Cookie signing secret |
+| `STORE_CORS` | Allowed origins for store API |
+| `ADMIN_CORS` | Allowed origins for admin API |
+| `AUTH_CORS` | Allowed origins for auth API |
+| `REDIS_URL` | Redis connection for event bus (optional) |
+| `MEDUSA_ADMIN_ONBOARDING_TYPE` | Admin onboarding type |
+| `AUTH_MFA_ENCRYPTION_KEY` | MFA encryption key |
+| `MEDUSA_ADMIN_ONBOARDING_NEXTJS_DIRECTORY` | Path to Next.js storefront |
 
-`apps/backend/.env.template` (8 lines) ships with only 6 of the same keys: `STORE_CORS`, `ADMIN_CORS`, `AUTH_CORS`, `REDIS_URL`, `JWT_SECRET`, `COOKIE_SECRET`, plus `DATABASE_URL=` (empty) and a placeholder `DB_NAME=medusa-backend` (unused — the backend reads `DATABASE_URL` only). The 3 keys present in `.env` but missing from the template are `MEDUSA_ADMIN_ONBOARDING_TYPE`, `AUTH_MFA_ENCRYPTION_KEY`, and `MEDUSA_ADMIN_ONBOARDING_NEXTJS_DIRECTORY` (added by the CLI at install time).
+For actual values in this installation, see `context.md`.
 
-`apps/storefront/.env.local` (24 lines, no `.env.template`):
-- `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_198991c030b843a43afdb9c80b62ec6c208ec75fd3431fb6fd98f201813b2b18`
-- `NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000`
-- `NEXT_PUBLIC_DEFAULT_REGION=dk`
-- `NEXT_PUBLIC_BASE_URL=https://localhost:8000` *(https, not http)*
-- `NEXT_PUBLIC_STRIPE_KEY=` *(empty)*
-- `MEDUSA_CLOUD_S3_HOSTNAME=`, `MEDUSA_CLOUD_S3_PATHNAME=` *(empty)*
+`apps/backend/.env.template` ships with a subset of these keys. The 3 keys present in `.env` but missing from the template are `MEDUSA_ADMIN_ONBOARDING_TYPE`, `AUTH_MFA_ENCRYPTION_KEY`, and `MEDUSA_ADMIN_ONBOARDING_NEXTJS_DIRECTORY` (added by the CLI at install time).
+
+`apps/storefront/.env.local` (no `.env.template` in this install) sets the publishable API key and backend URL. For actual values, see `context.md`.
 - `NODE_ENV=development`
 
 ## Integration Tests
@@ -306,5 +302,5 @@ Root `package.json` scripts use Turbo to fan out:
 ## Notes vs. Earlier `medusajstore/myshop` Install
 - Both target Medusa 2.20.1.
 - The earlier `medusajstore/myshop` had a richer MedusaCTA customization and more i18n entries; this fresh install uses the bare scaffold.
-- Database names differ: `medusa-myshop` (earlier) vs `medusa_myshop_fresh` (this one).
+- Database names differ between installs.
 - Customization status: identical (none). Both are upstream stock.

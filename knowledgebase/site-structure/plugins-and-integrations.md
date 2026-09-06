@@ -1,7 +1,7 @@
 # Plugins and Integrations
 
 ## Overview
-This Medusa installation uses **no external plugins**. All commerce functionality comes from Medusa's built-in **core commerce modules** and **infrastructure modules**. The storefront integrates with **Stripe** for payment processing (provider ids `pp_stripe_stripe` / `pp_stripe-ideal_stripe` / `pp_stripe-bancontact_stripe` available in `constants.tsx`; not registered unless a Stripe plugin is added).
+This Medusa installation uses **no external plugins**. All commerce functionality comes from Medusa's built-in **core commerce modules** and **infrastructure modules**. The storefront integrates with **Stripe** for payment processing (provider ids `pp_stripe_stripe` / `pp_stripe-ideal_stripe` / `pp_stripe-bancontact_stripe` available in `constants.tsx`). Stripe is a core payment provider in Medusa 2.20.1 — it is available once enabled in the admin; no plugin install is required.
 
 The storefront's local UI kit (`src/modules/common/components/ui/`) ships by default with the upstream starter; this install did not modify it.
 

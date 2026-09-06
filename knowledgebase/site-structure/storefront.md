@@ -191,7 +191,7 @@ There is no `apps/storefront/.env.template` in this install. The live `.env.loca
 
 | Variable | Purpose | Value in this install |
 |---|---|---|
-| `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | Publishable API key | `pk_198991c030b843a43afdb9c80b62ec6c208ec75fd3431fb6fd98f201813b2b18` |
+| `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | Publishable API key | *(see `context.md`)* |
 | `NEXT_PUBLIC_MEDUSA_BACKEND_URL` | Backend URL | `http://localhost:9000` |
 | `NEXT_PUBLIC_DEFAULT_REGION` | Default region | `dk` |
 | `NEXT_PUBLIC_BASE_URL` | Storefront base URL | `https://localhost:8000` *(https, not http)* |
@@ -299,7 +299,7 @@ Both installs are upstream stock from `create-medusa-app@latest --with-nextjs-st
 
 Differences:
 - **Earlier install had removed the local UI kit** and removed `Toaster`. This install keeps both.
-- **Database names differ**: `medusa-myshop` (earlier) vs `medusa_myshop_fresh` (this one).
+- **Database names differ** between installs.
 - **Publishable key / admin user / ports** differ (see `context.md`).
 - **Earlier storefront had additional i18n entries** in `src/admin/i18n/index.ts`; this one is the empty default.
 

@@ -91,9 +91,8 @@ Promo codes are applied inline via `DiscountCode` (`applyPromotions` from `@lib/
 | Addresses | `/account/addresses` | `addCustomerAddress`, `deleteCustomerAddress`, `updateCustomerAddress` |
 | Orders | `/account/orders` | `listOrders()` |
 | Order Details | `/account/orders/details/[id]` | `retrieveOrder()` |
-| Login | `/account/login` | `login()` |
-| Signup | `/account/signup` | `signup()` |
-| Logout | `/account/logout` | `signout()` |
+| Login/Register | `/account` (parallel `@login` slot) | `login()`, `signup()` |
+| Logout | N/A (server action redirect) | `signout()` |
 
 Auth flow:
 1. Signup: `sdk.auth.register()` → auth identity + email verification (if enabled)
@@ -143,7 +142,7 @@ The `initial-data-seed.ts` script creates (executed by `pnpm exec medusa db:migr
 | Inventory | 1,000,000 units per variant at European Warehouse |
 | Images | S3-hosted thumbnails + back/front images from medusa-public-images bucket |
 
-Verified post-seed counts in `medusa_myshop_fresh`:
+Verified post-seed counts in the project database:
 - 4 products, 20 variants, 1 region, 1 stock location, 1 publishable API key, 1 sales channel, 1 store
 
 ## Current Feature Gaps
@@ -164,6 +163,6 @@ Verified post-seed counts in `medusa_myshop_fresh`:
 │      → Medusa JS SDK                                       │
 │        → Backend REST API (http://localhost:9000)          │
 │          → Medusa Core Modules                             │
-│            → PostgreSQL Database (medusa_myshop_fresh)     │
+│            → PostgreSQL Database                          │
 └────────────────────────────────────────────────────────────┘
 ```

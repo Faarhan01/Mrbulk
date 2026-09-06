@@ -197,12 +197,12 @@ Pass `Authorization: Bearer <admin_token>`. Obtain a token via the admin login e
 ```bash
 curl -X POST http://localhost:9000/auth/admin/emailpass \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@test.com","password":"supersecret"}'
+  -d '{"email":"<admin_email>","password":"<admin_password>"}'
 ```
 
-For this install, in PowerShell:
+For this install, use the admin credentials from `context.md`:
 ```powershell
-$body = '{"email":"admin@test.com","password":"supersecret"}'
+$body = '{"email":"<admin_email>","password":"<admin_password>"}'
 Invoke-RestMethod -Method Post -Uri http://localhost:9000/auth/admin/emailpass -ContentType "application/json" -Body $body
 ```
 

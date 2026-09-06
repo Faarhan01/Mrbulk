@@ -48,7 +48,7 @@ To confirm the backend is still 100% upstream stock:
 
 ```powershell
 # In the project root
-cd "C:\Users\faarh\OneDrive\Documents\latest1\medusa-js"
+cd <project-root>
 
 # Compare any single backend file with upstream
 $url = "https://raw.githubusercontent.com/medusajs/dtc-starter/main/apps/backend/medusa-config.ts"
