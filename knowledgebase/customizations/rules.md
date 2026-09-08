@@ -7,6 +7,7 @@
 3. **Backend is 100% stock.** Do not modify `apps/backend/` unless you have a confirmed bug with a backend root cause. All known bugs are in the storefront UI layer.
 4. **No runtime behavior changes from lint fixes.** Changing no-op stubs (`applyGiftCard`, `removeDiscount`, `removeGiftCard`) to throw errors changes runtime behavior. Leave upstream stubs as-is.
 5. **Minimal diffs.** Only change what is necessary. Do not reformat, restructure, or "clean up" unrelated code. A fix should be a single targeted change, not a refactor.
+6. **Adapt, don't copy.** When implementing designs or features from a reference frontend, do not blindly copy code. Understand the reference pattern, then implement it using this storefront's architecture, design tokens, component conventions, and data layer. A feature that requires a new backend schema, module, or API endpoint is out of scope unless the user explicitly requests it.
 
 ## Bug Tracking
 
@@ -104,6 +105,60 @@ className="... overflow-visible ..."
 // After
 className="... overflow-hidden ..."
 ```
+
+### Using Shared Components
+
+**Rules for shared components:**
+- Import shared components from `@modules/common/components/shared/` (e.g. `PageBanner`, `CategoryBarCarousel`, `RecentlyViewedSection`).
+- Do not modify shared components to suit a single page. If a page needs a variant, add a prop with a sensible default.
+- Always pass `themeColor` to shared components that support it. This keeps the UI consistent with the site's theme system.
+- Shared components are client components. Do not wrap them in server components that need to pass event handlers as props.
+
+**Example — using PageBanner:**
+```tsx
+import { PageBanner } from "@modules/common/components/shared/page-banner"
+
+<PageBanner
+  title="Explore All Categories"
+  description="Browse our structured collections..."
+  badge="Department Catalog"
+  themeColor="blue"
+  onBack={() => router.push('/')}
+  backLabel="Home"
+/>
+```
+
+### Theme Tokens and Global Styles
+
+**Rules for theme and styling:**
+- Use `@medusajs/ui-preset` tokens (`text-ui-fg-*`, `bg-ui-bg-*`, `border-ui-border-*`) for foreground, background, and border colors. These are the source of truth.
+- For theme accents (blue, indigo, emerald, rose, amber, slate), use the `theme.*` color scale defined in `tailwind.config.js` (e.g. `text-theme-blue-600`, `bg-theme-rose-500`).
+- For gradients and decorative effects, use utilities defined in `globals.css` (`bg-gradient-theme-*`, `glow-theme-*`). Do not hardcode gradient class strings in components.
+- Use the existing `getThemeClasses()` helper from `src/lib/theme-utils.ts` when you need a set of coordinated classes for a theme color.
+- Do not add new CSS files or inline `<style>` tags. All global styles go in `globals.css` or `tailwind.config.js`.
+- Do not modify `@medusajs/ui-preset`. Override tokens in `tailwind.config.js` if needed.
+
+### Static Features (No Schema Changes)
+
+**Rules for static features:**
+- A static feature is any storefront addition that does not require a new Medusa module, workflow, or API endpoint.
+- Static features live entirely in `apps/storefront/src/`.
+- Use existing Medusa entities (products, categories, collections) via server actions before creating static mock data.
+- Static pages (About, FAQ, Contact, policies) go under `src/app/[countryCode]/(main)/<page>/page.tsx`.
+- Static sections (testimonials, brand grids, feature lists) go under `src/modules/<feature>/components/` or `src/modules/common/components/`.
+- Client-side-only features (wishlist, recently viewed, quick view) can use `localStorage` or React context. Do not create backend tables for client-only state.
+- Do not add new npm packages without checking if an existing dependency already provides the functionality.
+
+**When to use static vs backend:**
+
+| Need | Approach |
+|---|---|
+| New UI pattern on 2+ pages | Shared component in `common/components/shared/` |
+| New page with no new data | Static page in `app/[countryCode]/(main)/` |
+| New section on existing page | Component in the relevant feature module |
+| New data not in Medusa | Static array/object in `src/lib/` or `src/data/` |
+| New data editable in admin | Backend module + migration — not static |
+| New API behavior | Backend workflow + route — not static |
 
 ### Fixing Bugs
 

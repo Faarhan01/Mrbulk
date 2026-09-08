@@ -2,7 +2,7 @@
 
 ## Overview
 
-The backend uses **Jest** with `@swc/jest` for transformation. Tests are organized into three suites controlled by the `TEST_TYPE` environment variable. This file documents the test directory layout, the Jest configuration, the setup file, and how to run each suite.
+The backend uses **Jest** with `@swc/jest` for transformation. Tests are organized into three suites controlled by the `TEST_TYPE` environment variable. This file documents the test directory layout, the Jest configuration, the setup file, how to run each suite, and the actual state of tests in this project.
 
 ## Test Directory Layout
 
@@ -22,6 +22,8 @@ apps/backend/
 │       └── __tests__/
 │           └── *.unit.spec.ts  # Unit tests
 ```
+
+**Note**: The `src/modules/` directory is empty in this scaffold (only `README.md` exists). The `src/` directory contains `admin/`, `api/`, `jobs/`, `links/`, `migration-scripts/`, `modules/`, `subscribers/`, and `workflows/` — all scaffold placeholders with README files.
 
 ## Jest Configuration
 
@@ -59,6 +61,7 @@ Key points:
 - `modulePathIgnorePatterns` excludes `dist/` and `.medusa/` from module resolution.
 - `setupFiles` runs `integration-tests/setup.js` before every test file.
 - `TEST_TYPE` environment variable selects which test suite runs.
+- The `testMatch` patterns are set conditionally — only one suite runs at a time.
 
 ## Setup File
 
@@ -70,6 +73,8 @@ MikroORM.metadataStorage.clear()
 ```
 
 Purpose: Clears MikroORM's metadata cache between test runs. This prevents entity metadata from one test file leaking into another, which can cause false positives or schema conflicts.
+
+**Why this matters**: MikroORM caches entity metadata globally. Without this cleanup, running multiple test files in the same process can cause the second test to use metadata from the first test, leading to incorrect query results or schema mismatches.
 
 ## Test Suites
 
@@ -201,3 +206,114 @@ HTTP integration tests spin up the Express app and make real HTTP requests.
 ## Current State
 
 This scaffold has **no custom test files**. All three test directories are empty (only the scaffold placeholders exist). The test infrastructure is ready but unused.
+
+### What Exists
+
+- `jest.config.js` — configured with three suites
+- `integration-tests/setup.js` — MikroORM metadata cleanup
+- `src/modules/__tests__/` — empty (no test files)
+- `integration-tests/http/` — empty (no test files)
+
+### What's Missing
+
+- No unit test files (`*.unit.spec.ts`)
+- No module integration test files (`*.spec.ts` under `src/modules/`)
+- No HTTP integration test files (`*.spec.ts` under `integration-tests/http/`)
+- No `.env.test` file (tests use `.env` by default)
+
+## Test Utilities
+
+The project includes `@medusajs/test-utils` v2.20.1, which provides helpers for testing Medusa modules, workflows, and API routes. Common utilities:
+
+- `createMedusaServer()` — spins up a test Medusa server
+- `getContainer()` — resolves the DI container in tests
+- `jest-retry` — retry failed tests (configured in some Medusa projects)
+
+## Common Test Patterns
+
+### Testing a Workflow
+
+```ts
+import { createProductsWorkflow } from "@medusajs/medusa/core-flows"
+import { ModuleRegistrationName } from "@medusajs/framework/utils"
+
+describe("Product Workflow", () => {
+  let container: MedusaContainer
+
+  beforeAll(async () => {
+    container = await createMedusaServer()
+  })
+
+  it("should create a product", async () => {
+    const { result } = await createProductsWorkflow(container).run({
+      input: {
+        products: [{ title: "Test Product", status: "published" }],
+      },
+    })
+    expect(result[0].id).toBeDefined()
+  })
+})
+```
+
+### Testing an API Route
+
+```ts
+import request from "supertest"
+import { app } from "../../src/api"
+
+describe("GET /store/products", () => {
+  it("should return 200", async () => {
+    const res = await request(app).get("/store/products")
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty("products")
+  })
+})
+```
+
+### Testing a Server Action
+
+```ts
+import { listProducts } from "../../src/lib/data/products"
+
+describe("listProducts", () => {
+  it("should return products", async () => {
+    const result = await listProducts({
+      pageParam: 0,
+      queryParams: { limit: 10 },
+      countryCode: "dk",
+    })
+    expect(result.response.products).toBeDefined()
+  })
+})
+```
+
+## Troubleshooting
+
+### `NODE_OPTIONS=--experimental-vm-modules` required
+
+On Windows PowerShell:
+```powershell
+$env:NODE_OPTIONS="--experimental-vm-modules"
+pnpm run test:unit
+```
+
+On macOS/Linux:
+```bash
+NODE_OPTIONS=--experimental-vm-modules pnpm run test:unit
+```
+
+### Database not reachable
+
+Integration tests require a running PostgreSQL. Check:
+1. PostgreSQL is running (`pg_ctl status` or `Get-Service -Name postgresql`)
+2. `DATABASE_URL` is set correctly in `.env`
+3. The database exists (`createdb medusa_swift_canyon` or via psql)
+4. Migrations are up to date (`pnpm exec medusa db:migrate`)
+
+### MikroORM metadata leak
+
+If tests fail with unexpected schema errors, ensure `integration-tests/setup.js` is listed in `jest.config.js` `setupFiles`. This clears MikroORM's metadata cache before each test file.
+
+### `Cannot find module` errors
+
+Ensure `pnpm install` has completed successfully. The `modulePathIgnorePatterns` in `jest.config.js` excludes `dist/` and `.medusa/` — make sure your source files are in `src/`, not `dist/`.

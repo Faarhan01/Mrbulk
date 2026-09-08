@@ -2,6 +2,8 @@
 
 This document is the single source of truth for making changes to the `medusa-js` project. It covers the project structure, how to make UI changes, bug fixes, add new features, create components, and verify your work.
 
+> **Architecture-first rule:** Never copy-paste components or features from a reference codebase without first adapting them to this storefront's architecture, design tokens, routing conventions, and data layer. If a reference feature depends on a backend schema, module, or API that does not exist here, treat it as out of scope until the user explicitly asks for backend work.
+
 ---
 
 ## Table of Contents
@@ -9,10 +11,13 @@ This document is the single source of truth for making changes to the `medusa-js
 1. [Project Structure](#project-structure)
 2. [Development Environment](#development-environment)
 3. [Making Changes](#making-changes)
-   - [UI Changes](#ui-changes)
-   - [Bug Fixes](#bug-fixes)
-   - [Adding New Features](#adding-new-features)
-   - [Creating Components](#creating-components)
+    - [UI Changes](#ui-changes)
+    - [Using Shared Components](#using-shared-components)
+    - [Static Features](#static-features)
+    - [Theme Tokens](#theme-tokens)
+    - [Bug Fixes](#bug-fixes)
+    - [Adding New Features](#adding-new-features)
+    - [Creating Components](#creating-components)
 4. [Backend Changes](#backend-changes)
 5. [Config Changes](#config-changes)
 6. [Verification](#verification)
@@ -187,6 +192,121 @@ className="... max-h-[90vh] ..."
 
 ---
 
+## Using Shared Components
+
+The storefront includes shared components in `src/modules/common/components/shared/` that implement common UI patterns. Use these instead of duplicating code across pages.
+
+**Available shared components:**
+- `PageBanner` — page header with breadcrumb, title, description, badge, and optional background image
+- `CategoryBarCarousel` — horizontal scrollable category button track with drag-to-scroll
+- `RecentlyViewedSection` — horizontal scrollable product strip with scroll controls
+
+**How to use:**
+```tsx
+import { PageBanner } from "@modules/common/components/shared/page-banner"
+import { CategoryBarCarousel } from "@modules/common/components/shared/category-bar"
+import { RecentlyViewedSection } from "@modules/common/components/shared/recently-viewed"
+
+// PageBanner — use for any page-level hero with breadcrumb
+<PageBanner
+  title="Explore All Categories"
+  description="Browse our structured collections..."
+  badge="Department Catalog"
+  themeColor="blue"
+  onBack={() => router.push('/')}
+  backLabel="Home"
+  backgroundImage="https://..."
+/>
+
+// CategoryBarCarousel — use on any page that needs category filtering
+<CategoryBarCarousel
+  categories={categories}
+  selectedCategory={activeCategory}
+  onSelectCategory={(name) => router.push(getCategoryUrl(name))}
+  themeColor={themeColor}
+  currentTheme={currentTheme}
+/>
+
+// RecentlyViewedSection — use wherever recently viewed products should appear
+<RecentlyViewedSection
+  products={products}
+  currentProductId={product.id}
+  onSelectProduct={(id) => router.push(getProductUrl(id))}
+  title="Recently Viewed Items"
+  maxItems={10}
+/>
+```
+
+**Rules:**
+- Always pass `themeColor` to shared components that support it.
+- Do not modify shared components to suit a single page. Add a prop with a sensible default instead.
+- Shared components are client components. Do not wrap them in server components that need to pass event handlers as props.
+- For full API reference, see `customizations/shared-components.md`.
+
+---
+
+## Static Features (No Schema Changes)
+
+Many storefront enhancements can be implemented without touching the backend. These are called "static features."
+
+**What counts as static:**
+- New pages (About, FAQ, Contact, policy pages) — no new data requirements
+- New UI sections (testimonials, brand grids, feature lists)
+- New shared components
+- Client-side features (wishlist, recently viewed, quick view modals)
+- Theme and styling changes
+- Static data files (navigation links, feature flags, SEO configs)
+
+**Where to put static features:**
+- New pages: `src/app/[countryCode]/(main)/<page>/page.tsx`
+- New components: `src/modules/<feature>/components/` or `src/modules/common/components/`
+- Static data: `src/lib/constants.tsx` or `src/data/`
+- Global styles: `src/styles/globals.css` and `tailwind.config.js`
+
+**Using existing Medusa data:**
+Before adding static mock data, check if the data already exists in Medusa:
+
+| Need | Use This |
+|---|---|
+| Product listings | `listProducts()` from `@lib/data/products` |
+| Categories | `listCategories()` from `@lib/data/products` |
+| Collections | `listCollections()` from `@lib/data/products` |
+| Regions/countries | `listRegions()` from `@lib/data/cart` |
+| Store info | `store` object from SDK |
+| Customer data | `retrieveCustomer()` from `@lib/data/customer` |
+
+**Client-side-only features:**
+- Use `"use client"` at the top of the component.
+- Fetch data via existing server actions (`@lib/data/*`) or the Medusa SDK.
+- Store client-side state in `localStorage` or React context. Do not create new backend tables for client-only features.
+
+**When to use static vs backend:**
+
+| Scenario | Approach |
+|---|---|
+| New UI pattern on 2+ pages | Shared component in `common/components/shared/` |
+| New page with no new data | Static page in `app/[countryCode]/(main)/` |
+| New section on existing page | Component in the relevant feature module |
+| New data not in Medusa | Static array/object in `src/lib/` or `src/data/` |
+| New data editable in admin | Backend module + migration — not static |
+| New API behavior | Backend workflow + route — not static |
+
+For full details, see `customizations/static.md`.
+
+---
+
+## Theme Tokens
+
+**Rules for theme and styling:**
+- Use `@medusajs/ui-preset` tokens (`text-ui-fg-*`, `bg-ui-bg-*`, `border-ui-border-*`) for foreground, background, and border colors.
+- For theme accents (blue, indigo, emerald, rose, amber, slate), use the `theme.*` color scale (e.g. `text-theme-blue-600`, `bg-theme-rose-500`).
+- For gradients and decorative effects, use utilities from `globals.css` (`bg-gradient-theme-*`, `glow-theme-*`). Do not hardcode gradient class strings in components.
+- Use `getThemeClasses()` from `src/lib/theme-utils.ts` when you need a set of coordinated classes for a theme color.
+- Do not add new CSS files or inline `<style>` tags. All global styles go in `globals.css` or `tailwind.config.js`.
+- Do not modify `@medusajs/ui-preset`. Override tokens in `tailwind.config.js` if needed.
+
+---
+
 ## Bug Fixes
 
 ### Rules for Bug Fixes
@@ -284,6 +404,22 @@ export default function MyForm() {
   )
 }
 ```
+
+### Ignored Features (Out of Scope Unless Explicitly Requested)
+
+The following feature categories are **ignored by default** when adapting designs from a reference frontend. Do not implement them unless the user explicitly asks for them:
+
+- **New backend schemas or modules** — any feature requiring a new Medusa module, DML model, migration, or workflow step.
+- **New API endpoints** — any feature requiring a new `src/api/store/.../route.ts` or admin API route.
+- **New npm dependencies** — do not add packages like `framer-motion`, `swiper`, or chart libraries unless explicitly requested. Check if an existing dependency can provide the behavior first.
+- **Admin dashboard customizations** — widgets, UI routes, or admin extensions are out of scope for storefront design adaptation.
+- **Data model extensions** — custom product attributes, customer metadata, order fields, etc. require backend changes and are out of scope.
+- **Third-party integrations** — analytics, payment providers, shipping carriers, etc. require backend configuration and are out of scope.
+- **Authentication/authorization changes** — new auth flows, OAuth providers, MFA, etc. require backend changes.
+
+**Rule:** If a reference feature requires any of the above, document it in the relevant plan file under "Ignored Features" with a note that it is out of scope, and ask the user if they want to proceed with backend work.
+
+---
 
 ---
 
