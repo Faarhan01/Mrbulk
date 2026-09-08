@@ -146,7 +146,7 @@ export type CustomerAuthState = /* ... */
 
 ### products.ts
 - `listProducts({ pageParam, queryParams, countryCode, regionId })`
-- `listProductsWithSort({ pageParam, queryParams, countryCode, regionId, sortBy })`
+- `listProductsWithSort({ page, queryParams, countryCode, sortBy, optionValueIds })`
 
 Query params: `limit` (default 12), `offset`, `region_id`, `handle`, `options`, `sortBy`.
 

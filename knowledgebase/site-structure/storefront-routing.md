@@ -7,7 +7,7 @@ The storefront is a Next.js 15 App Router project with **localized routing** (`/
 
 Every customer-facing route lives under `app/[countryCode]/...`. The country segment is the first path segment (`/dk`, `/us`, `/gb`, etc.).
 
-- `app/middleware.ts` resolves the country from the URL, `cf.country` (Cloudflare), `x-vercel-ip-country` (Vercel), or `NEXT_PUBLIC_DEFAULT_REGION` (default `"dk"`), and 307-redirects to the country-prefixed path if the prefix is missing.
+- `src/middleware.ts` resolves the country from the URL, `cf.country` (Cloudflare), `x-vercel-ip-country` (Vercel), or `NEXT_PUBLIC_DEFAULT_REGION` (default `"dk"`), and 307-redirects to the country-prefixed path if the prefix is missing.
 - `LocalizedClientLink` (`@modules/common/components/localized-client-link`) wraps `next/link` and prepends the active `countryCode` automatically — so application code only writes `/products/...`, `/account`, `/cart`, etc.
 - `<RootLayout>` at `app/layout.tsx` sets `metadataBase: new URL(getBaseURL())` (using `NEXT_PUBLIC_BASE_URL || "https://localhost:8000"`). The `[countryCode]/(main)/layout.tsx` sets `metadataBase` again on the regional layout (same value).
 - Server components read the country via `props.params` (Next.js 15 made `params` async — every page must `await props.params`).

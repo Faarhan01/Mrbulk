@@ -56,15 +56,17 @@ const { sortBy, page, optionValueIds } = await searchParams ?? {}
 ## `listProductsWithSort` (`apps/storefront/src/lib/data/products.ts:99-151`)
 
 Server action. Steps:
-1. Calls `listProducts({ pageParam: 1, queryParams: { limit: 100, ...queryParams, region_id, ...(optionValueIds ? { option_value_id: optionValueIds } : {}) } })` — fetches up to 100 products in one round trip (the Medusa Store API does **not** sort by price server-side, so the client has to over-fetch and sort locally).
+1. Calls `listProducts({ pageParam: 0, queryParams: { ...queryParams, ...(optionFilters.length ? { option_value_id: optionFilters } : {}), limit: 100 }, countryCode })` — fetches up to 100 products in one round trip (the Medusa Store API does **not** sort by price server-side, so the client has to over-fetch and sort locally).
 2. Calls `sortProducts(products, sortBy)` (in-place sort).
-3. Computes `offset` and `limit` (default `12`) from `page` and slices the sorted array.
-4. Returns `{ response: { products: paginated, count: totalFilteredCount }, nextPage: page + 1 | null, queryParams }`.
+3. Computes `pageParam = (page - 1) * limit` and slices the sorted array: `sortedProducts.slice(pageParam, pageParam + limit)`.
+4. Returns `{ response: { products: paginatedProducts, count: filteredCount }, nextPage: pageParam + limit | null, queryParams }` where `filteredCount` is the number of products fetched (capped at 100) and `nextPage` is the next offset (not the next page number).
 
-The pagination math:
-- `offset = page === 1 ? 0 : (page - 1) * limit`
-- `nextPage = totalFilteredCount > offset + limit ? page + 1 : null`
-- `totalPages = Math.ceil(totalFilteredCount / limit)`
+The pagination math inside `listProductsWithSort`:
+- `pageParam = (page - 1) * limit`
+- `nextPage = filteredCount > pageParam + limit ? pageParam + limit : null` (returns the next **offset**, not the next page number)
+- `paginatedProducts = sortedProducts.slice(pageParam, pageParam + limit)`
+
+`totalPages` is not computed inside `listProductsWithSort`; it is calculated by `<PaginatedProducts>` as `Math.ceil(count / PRODUCT_LIMIT)`.
 
 ## `sortProducts` (`apps/storefront/src/lib/util/sort-products.ts`)
 
@@ -78,17 +80,31 @@ The function mutates the input array (`.sort()` returns the same reference).
 
 ### `<RefinementList>` (`modules/store/components/refinement-list/index.tsx`)
 
-Client. Owns the `updateQueryParams((params) => …)` helper:
+Client. Owns the `updateQueryParams` helper:
 ```ts
-const updateQueryParams = (updater: (p: URLSearchParams) => URLSearchParams) => {
-  const params = new URLSearchParams(searchParams)
-  const next = updater(params)
-  next.delete("page")           // ALWAYS reset to page 1 on any change
-  router.push(nextPath + "?" + next.toString())
-}
+const updateQueryParams = useCallback(
+  (updater: (params: URLSearchParams) => void) => {
+    const params = new URLSearchParams(searchParams.toString())
+    updater(params)
+
+    params.delete("page")           // ALWAYS reset to page 1 on any change
+
+    const queryString = params.toString()
+    const currentQuery = searchParams.toString()
+    const nextPath = queryString ? `${pathname}?${queryString}` : pathname
+    const currentPath = currentQuery
+      ? `${pathname}?${currentQuery}`
+      : pathname
+
+    if (nextPath !== currentPath) {
+      router.push(nextPath)
+    }
+  },
+  [pathname, router, searchParams]
+)
 ```
 
-The `next.delete("page")` is the key contract: **any** sort or filter change resets the user to page 1. It does this by constructing a new `URLSearchParams`, applying the change, then unconditionally stripping `page`. Renders `<SortProducts>` + `<OptionsPicker>`.
+The `params.delete("page")` is the key contract: **any** sort or filter change resets the user to page 1. It does this by mutating the `URLSearchParams`, applying the change, then unconditionally stripping `page`, and only calling `router.push` when the resulting URL differs from the current one. Renders `<SortProducts>` + `<OptionsPicker>`.
 
 ### `<SortProducts>` (`modules/store/components/refinement-list/sort-products/index.tsx`)
 

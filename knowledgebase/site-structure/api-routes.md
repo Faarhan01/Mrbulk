@@ -215,7 +215,7 @@ Use `zod`:
 ```ts
 import { z } from "zod"
 
-const CreateBrand = = z.object({
+const CreateBrand = z.object({
   name: z.string(),
   handle: z.string(),
 })

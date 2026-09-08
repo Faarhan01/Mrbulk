@@ -545,6 +545,13 @@ Detailed site-structure docs live in `knowledgebase/site-structure/`:
 - `storefront-routing.md` — Next.js App Router: route groups, parallel slots, `generateStaticParams`, loading/not-found
 - `components.md` — Component catalog and patterns
 - `cart-and-checkout-behavior.md` — Cart dropdown timer, mismatch banner, free-shipping nudge, checkout step routing, payment-return state machine
+- `storefront-pdp.md` — Product detail page: 3-column layout, variant selection, mobile actions, product tabs, related products
+- `storefront-listing.md` — Store/collection/category listing: PaginatedProducts, RefinementList, sort/page/optionValueIds
+- `storefront-checkout-architecture.md` — Checkout form deep dive: addresses, shipping (pickup split), payment (Stripe Elements), review step
+- `storefront-account.md` — Account layout, nav, overview dashboard, profile editing Disclosure pattern
+- `storefront-order.md` — Order confirmation vs details, transfer flow, onboarding CTA
+- `storefront-cart.md` — Cart page templates, item updates, preview, getCheckoutStep
+- `storefront-middleware.md` — Edge runtime, region resolution, cache strategy, matcher rationale
 - `sort-filter-and-search-params.md` — `sortBy` / `page` / `optionValueIds` URL contract, `listProductsWithSort`, refinement list
 - `ui-primitives-and-modals.md` — Local UI kit, `Input` floating-label contract, `Modal` API, form-modal pattern
 - `api-routes.md` — File-based API routing conventions and core endpoints
@@ -552,6 +559,8 @@ Detailed site-structure docs live in `knowledgebase/site-structure/`:
 - `features.md` — Feature flow (home, products, cart, checkout, account, orders)
 - `global-styles.md` — Tailwind, design tokens, theming
 - `plugins-and-integrations.md` — Stripe, no external plugins, built-in modules
+- `migration-scripts.md` — Seed script patterns: workflows, query.graph(), link.create()
+- `testing.md` — Backend test layout, Jest config, TEST_TYPE filtering, setup.js
 
 Customizations made on top of the upstream baseline (documented 2026-09-06):
 - `customizations/frontend-fixes.md` — audit of storefront fixes (BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-13, BUG-14, BUG-15 applied; BUG-07 no fix needed; BUG-08 through BUG-12 not fixed)

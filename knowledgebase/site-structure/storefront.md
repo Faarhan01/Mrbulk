@@ -243,7 +243,7 @@ There is no `apps/storefront/.env.template` in this install. The live `.env.loca
 - `siteUrl: process.env.NEXT_PUBLIC_VERCEL_URL` (used for the sitemap `<loc>` base URL; on Vercel this is set automatically. Local dev without Vercel: empty)
 - `generateRobotsTxt: true`
 - `exclude: ["/checkout", "/account/*", "/[sitemap]"]`
-- `robotsTxtOptions`: `userAgent: "*"`, `allow: "/"`, `disallow: ["/checkout", "/account/*"]`
+- `robotsTxtOptions`: `policies: [{ userAgent: "*", allow: "/" }, { userAgent: "*", disallow: ["/checkout", "/account/*"] }]`
 
 ## Local UI Kit
 
