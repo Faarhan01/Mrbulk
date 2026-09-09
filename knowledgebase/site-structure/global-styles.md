@@ -807,9 +807,11 @@ Standard PostCSS setup. No custom plugins beyond Tailwind and Autoprefixer.
 
 1. **New utility class** → add to `@layer utilities` in `src/styles/globals.css`
 2. **New component class** → add to `@layer components` in `src/styles/globals.css`
-3. **New design token** → add to `theme.extend` in `tailwind.config.js` (colors, spacing, etc.)
+3. **New design token** → add to `theme.extend` in `tailwind.config.js` (colors, spacing, etc.) **or** add a CSS custom property to the `:root` block in `globals.css` (preferred for e-commerce tokens the preset lacks: `--input-*`, `--price-*`, `--badge-*`, `--btn-primary-*`, `--radius-*`, `--focus-ring`)
 4. **New animation** → add both `keyframes` and `animation` entries in `tailwind.config.js`
 5. **New breakpoint** → add to `theme.extend.screens` in `tailwind.config.js`
+6. **New base reset / heading base / focus ring / motion guard** → add to `@layer base` in `globals.css` (add a `:root { color-scheme: light }` block if tokens are needed — currently absent)
+7. **Dark-mode token overrides** → add a `.dark { ... }` block in `globals.css` for any `:root` token introduced in step 3. Do **not** override preset variables.
 
 **Rule**: Do NOT add inline `<style>` tags or CSS-in-JS. All global styles go in `globals.css` or `tailwind.config.js`.
 
@@ -830,8 +832,12 @@ Standard PostCSS setup. No custom plugins beyond Tailwind and Autoprefixer.
 | Change border radius | `tailwind.config.js` → `borderRadius` | Change `rounded: "8px"` to `"12px"` |
 | Hide scrollbar on element | Add `no-scrollbar` class | Already defined in `globals.css` |
 | Override preset token | `tailwind.config.js` → `theme.extend.colors.ui` | Override `ui.bg.base.DEFAULT` |
-| Use Medusa shadow | Add `shadow-elevation-card-rest` class | From preset `boxShadow` tokens |
 | Use Medusa tag color | Add `bg-ui-tag-green-bg text-ui-tag-green-text` | From preset color tokens |
+| Add e-commerce token (badge/price/input) | Add `--price-sale` / `--badge-stock-in` etc. to `:root` in `globals.css` | Preset has no such tokens — extend `:root`, not the preset |
+| Add component surface (card/badge/button) | Add `.surface-card` / `.btn-primary` etc. to `@layer components` in `globals.css` | Reference-only classes not in preset or local UI kit |
+| Add base heading/reset/motion guard | Add to `@layer base` in `globals.css` | Pair with `:root` token additions |
+| Add `rounded-3xl` | Add `"3xl": "1.5rem"` to `borderRadius` in `tailwind.config.js` | Additive — does not touch existing `rounded`/`large` |
+| Switch default accent hue | Single-value edit to `--btn-primary-bg`/`--text-accent` in `:root` + `.dark` | No per-component changes; no new JS toggle |
 
 ---
 
@@ -844,3 +850,203 @@ Standard PostCSS setup. No custom plugins beyond Tailwind and Autoprefixer.
 - **`tailwindcss-animate` is transitively included** via the preset — no separate install needed.
 - **Dark mode is disabled in the UI** — `darkMode: "class"` is configured, but there is no toggle in the storefront. The `<html data-mode="light">` is hardcoded.
 - **The `content` array does not include `node_modules/@medusajs/ui`** — this is acceptable because the preset registers its typography classes globally. Add it only if you import custom `@medusajs/ui` components.
+- **Do not override `@medusajs/ui-preset` variables** to "match" the LuxeStore reference token-for-token. The preset is version-locked to Medusa v2.20.1 and Medusa UI primitives depend on its exact values. Where a role overlaps, reuse the preset utility (`text-ui-fg-base`, `bg-ui-bg-base`, `border-ui-border-base`). Where the preset has no equivalent, **extend** the `:root` block in `globals.css` with new custom properties — never hijack an existing preset variable name.
+
+---
+
+## Reference Design Language (LuxeStore / Mrbulk Frontend) — Token Mapping & Gap Analysis
+
+A sibling storefront in `ref/modern/Nextjsfrontend` (the "LuxeStore" frontend) shares this project's visual lineage but is built on a **different styling stack**. This section maps that design language onto our Medusa token system so the two can be aligned *without* introducing a parallel theme system.
+
+### Stack comparison (must-read before porting anything)
+
+| | This storefront (Medusa DTC) | Reference (LuxeStore) |
+|---|---|---|
+| Tailwind | **v3** (`@import "tailwindcss/base"; components; utilities`) | **v4** (`@import "tailwindcss"`) |
+| Theme source of truth | `@medusajs/ui-preset` CSS vars injected via `addBase`, extended in `tailwind.config.js` | Semantic CSS custom properties declared in `:root` / `.dark`, plus an `@theme` block |
+| Token naming | `--fg-base` → utility `text-ui-fg-base` | `--text-primary` → utility `text-theme-primary` (custom) |
+| Token location | Preset injects into `:root`/`.dark`; our `globals.css` adds **no** `:root` block today | All tokens defined in `frontend/src/index.css` `:root` / `.dark` |
+| Dark mode | `darkMode: "class"` **configured, but no toggle** — `<html data-mode="light">` is hardcoded in `layout.tsx` | `.dark` class driven by a `beforeInteractive` init script in `layout.tsx` (reads `localStorage.luxestore_dark_mode` / `mrbulk_dark_mode`, falls back to `prefers-color-scheme: dark`) |
+| Theme accent | Preset single accent: `--fg-interactive` / `--bg-interactive` (blue `#2563eb`) | Runtime accent via `getThemeClasses(themeColor)` returning class strings for `blue | indigo | emerald | rose | amber | slate`, with runtime CSS-var overrides on the 6 accent tokens |
+| Config file | `apps/storefront/tailwind.config.js` | none (v4 auto-config) |
+
+> **Incompatibility warning — do not copy-paste.** The reference's `index.css` uses **Tailwind v4** constructs that are **invalid syntax under our Tailwind v3** build. When porting a token or class, always translate:
+> - `@utility name { ... }` → `@layer utilities { .name { @apply ...; } }` in `globals.css`
+> - `@theme { --color-x: ... }` → `theme.extend` entry in `tailwind.config.js`
+> - `@custom-variant dark (&:where(.dark, .dark *))` → already covered by `darkMode: "class"`
+> Do **not** drop the reference's raw `index.css` into `globals.css`; it will not compile.
+
+### Semantic token cross-map (reference → Medusa preset)
+
+For each reference token, the rule is: **use the Medusa preset token where the role overlaps; add a brand-new CSS custom property to the `:root` block in `globals.css` only where the preset has no equivalent.** Never override preset variables — extend the existing `:root` block (which is currently empty in our `globals.css`).
+
+#### Surfaces & canvas
+
+| Reference token (light / dark) | Medusa preset token | Medusa utility class | Action for our storefront |
+|---|---|---|---|
+| `--bg-canvas` `#fff` / `#020617` | `--bg-base` | `bg-ui-bg-base` | Reuse preset. (Note: preset dark canvas is `#212121` vs reference near-black `#020617` — if matching the reference's near-black canvas is required, this is the one place to override `--bg-base` in `.dark`; prefer reusing the preset value for consistency with Medusa UI.) |
+| `--bg-surface` `#fff` / `#1e293b` | `--bg-component` (preset `bg-ui-bg-component`) + `--bg-base` | `bg-ui-bg-component` / `bg-ui-bg-base` | Reuse preset. |
+| `--bg-surface-elevated` `#fff` / `#334155` | `--bg-component` | `bg-ui-bg-component` | Reuse preset (preset has no "elevated" variant; map to `--bg-component`). |
+| `--bg-surface-subtle` `#f8fafc` / `#1e293b` | `--bg-subtle` | `bg-ui-bg-subtle` | Reuse preset. |
+| `--bg-surface-hover` `#f1f5f9` / `#334155` | `--bg-component-hover` | `bg-ui-bg-component-hover` | Reuse preset. |
+| `--bg-surface-active` `#e2e8f0` / `#475569` | `--bg-component-pressed` | `bg-ui-bg-component-pressed` | Reuse preset. |
+| `--bg-overlay` `rgba(15,23,42,.5)` / `rgba(2,6,23,.75)` | `--bg-overlay` | `bg-ui-bg-overlay` | Reuse preset. |
+
+#### Text & foreground
+
+| Reference token (light / dark) | Medusa preset token | Medusa utility class | Action |
+|---|---|---|---|
+| `--text-primary` `#0f172a` / `#f8fafc` | `--fg-base` | `text-ui-fg-base` | Reuse preset. |
+| `--text-secondary` `#475569` / `#cbd5e1` | `--fg-muted` | `text-ui-fg-muted` | Reuse preset (`--fg-muted` maps to `#71717a`/`#71717a` — close but not identical; reuse rather than override). |
+| `--text-muted` `#64748b` / `#94a3b8` | `--fg-subtle` | `text-ui-fg-subtle` | Reuse preset. |
+| `--text-subtle` `#94a3b8` / `#64748b` | `--fg-disabled` | `text-ui-fg-disabled` | Reuse preset. |
+| `--text-accent` `#2563eb` / `#60a5fa` | `--fg-interactive` | `text-ui-fg-interactive` | Reuse preset. |
+
+#### Borders
+
+| Reference token (light / dark) | Medusa preset token | Medusa utility class | Action |
+|---|---|---|---|
+| `--border-default` `#e2e8f0` / `#334155` | `--border-base` | `border-ui-border-base` | Reuse preset. |
+| `--border-subtle` `#f1f5f9` / `#1e293b` | (preset has no subtle separator) | — | **Add** to `:root` (or reuse `--border-base` at reduced opacity via Tailwind `border-black/10`). Prefer reusing preset `border-ui-border-base` for consistency. |
+| `--border-strong` `#cbd5e1` / `#475569` | `--border-strong` | `border-ui-border-strong` | Reuse preset. |
+| `--border-interactive` `#94a3b8` / `#64a5fa` | `--border-interactive` | `border-ui-border-interactive` | Reuse preset. |
+| `--border-focus` `#2563eb` / `#3b82f6` | `--border-interactive` (preset uses `--border-interactive` for focus, value `#3b82f6`) | `border-ui-border-interactive` | Reuse preset for focus ring. |
+
+#### Form / input tokens (preset has none — add to `:root`)
+
+These tokens **do not exist in the Medusa preset** and must be added to the `:root` / `.dark` blocks in `globals.css`:
+
+| Token | Light | Dark | Purpose |
+|---|---|---|---|
+| `--input-bg` | `#ffffff` | `#1e293b` | Input background |
+| `--input-bg-subtle` | `#f8fafc` | `#334155` | Subtle field bg |
+| `--input-border` | `#cbd5e1` | `#334155` | Default input border |
+| `--input-border-hover` | `#94a3b8` | `#475569` | Hover border |
+| `--input-border-focus` | `#2563eb` | `#3b82f6` | Focus border |
+| `--input-text` | `#0f172a` | `#f8fafc` | Input text color |
+| `--input-placeholder` | `#94a3b8` | `#64748b` | Placeholder color |
+| `--input-ring` | `rgba(37,99,235,.2)` | `rgba(59,130,246,.3)` | Focus ring (matches `--border-focus`) |
+| `--input-ring-error` | `rgba(225,29,72,.2)` | `rgba(244,63,94,.3)` | Error focus ring |
+
+> These map directly onto the reference `index.css`. Our storefront's `Input` floating-label rule already relies on a focus state — wiring these tokens gives the reference's smooth border + ring transition without touching component code.
+
+#### Button, badge, pricing, stock, geometry tokens (preset has none — add to `:root`)
+
+| Token | Light | Dark | Maps to reference class |
+|---|---|---|---|
+| `--btn-primary-bg` | `#1d4ed8` | `#2563eb` | `.btn-primary` |
+| `--btn-primary-text` | `#ffffff` | `#ffffff` | `.btn-primary` |
+| `--btn-primary-hover` | `#1e40af` | `#3b82f6` | `.btn-primary:hover` |
+| `--btn-primary-active` | `#172554` | `#1d4ed8` | `.btn-primary:active` |
+| `--btn-secondary-bg` | `#f1f5f9` | `#334155` | `.btn-secondary` |
+| `--btn-secondary-text` | `#0f172a` | `#f8fafc` | `.btn-secondary` |
+| `--btn-secondary-border` | `#e2e8f0` | `#475569` | `.btn-secondary` |
+| `--price-primary` | `#0f172a` | `#f8fafc` | `.price-tag` |
+| `--price-sale` | `#e11d48` | `#fb7185` | `.price-sale` |
+| `--price-original` | `#94a3b8` | `#94a3b8` | `.price-original` |
+| `--badge-sale-bg` | `#ffe4e6` | `rgba(225,29,72,.25)` | `.badge-sale` / `.price-discount-pill` |
+| `--badge-sale-text` | `#be123c` | `#fda4af` | `.badge-sale` / `.price-discount-pill` |
+| `--badge-new-bg` | `#dbeafe` | `rgba(37,99,235,.25)` | `.badge-new` |
+| `--badge-new-text` | `#1d4ed8` | `#93c5fd` | `.badge-new` |
+| `--badge-stock-in` | `#059669` | `#34d399` | `.stock-dot-in` / `.badge-success` |
+| `--badge-stock-low` | `#d97706` | `#fbbf24` | `.stock-dot-low` / `.badge-warning` |
+| `--badge-stock-out` | `#e11d48` | `#f87171` | `.stock-dot-out` / `.badge-danger` |
+| `--rating-star` | `#f59e0b` | `#fbbf24` | Rating stars |
+| `--radius-sm` | `0.5rem` | — | Shared |
+| `--radius-md` | `0.75rem` | — | Shared |
+| `--radius-lg` | `1rem` | — | Shared |
+| `--radius-xl` | `1.25rem` | — | Shared (add `3xl: 24px`? no — see below) |
+| `--radius-2xl` | `1.5rem` | — | Shared |
+| `--radius-full` | `9999px` | — | = preset `circle: 9999px` |
+| `--focus-ring` | `rgba(37,99,235,.4)` | `rgba(59,130,246,.5)` | Global `:focus-visible` |
+
+> **Border-radius scale:** the reference uses `--radius-sm/md/lg/xl/2xl` (4×/6×/8×/10×/12×/16px) plus full. Our preset `borderRadius` is `none/soft/base/rounded/large/circle`. To support the reference's `rounded-2xl` (8px) / `rounded-3xl` (24px) vocabulary used by `PageBanner`/`rounded-3xl`, extend our `tailConfig.borderRadius` with `"3xl": "1.5rem"` — do **not** rename existing tokens (the local UI kit and Medusa components use `rounded`/`large`). Add `3xl` as a purely additive entry.
+
+#### Accent / theme-color system
+
+The reference's `getThemeClasses()` returns Tailwind class strings for six hues (`blue`, `indigo`, `emerald`, `rose`, `amber`, `slate`) and, on mount, **overrides six CSS variables at runtime** via `theme-provider.tsx`:
+`--text-accent`, `--border-focus`, `--btn-primary-bg`, `--focus-ring`, `--input-ring`, `--badge-new-bg`, `--badge-new-text`.
+
+This runtime override is a **component feature** (`theme-provider.tsx`, mounted in `layout.tsx`), **not** a global-style rule. Per scope ("no new features such as darkmode"), we do **not** add the runtime toggle. Instead:
+
+- The **default accent** in our storefront is already blue via the Medusa preset (`--fg-interactive` = `#3b82f6` / `--bg-interactive`).
+- To let shared components adopt the reference's accent vocabulary, **add the seven accent tokens above to `:root`** with the reference's **blue** (`--btn-primary-bg: #1d4ed8`) values as the default. Components then consume `var(--btn-primary-bg)` etc. directly. Swapping the default hue later is a **single-point global edit** in the `:root` block (and the matching `.dark` line) — no per-component changes and no new JS module required.
+- If per-page accent variation is ever needed, it is achieved by overriding those same `:root` variables in a scoped selector (e.g. `html[data-theme="emerald"] { --btn-primary-bg: #059669; ... }`) — this extends the existing `:root` mechanism, **not** a new theme type.
+
+### Global component surfaces & utility classes missing from this storefront
+
+Verified by grep: **zero** matches for `surface-card|btn-primary|badge-sale|card-base|input-control|scrollbar-thin|popover-surface|...` across `apps/storefront/src/`. Our storefront has no global surface/button/badge/pricing/scrollbar classes — components inline Tailwind utilities or use the local UI kit. The reference centralises these in `index.css`. To adopt that discipline without touching components, **extend `globals.css`** (`@layer components` for surfaces, `@layer utilities` for shorthand helpers) referencing either Medusa preset vars or the `:root` tokens above.
+
+| Reference class | CSS var(s) it uses | Medusa overlap | Add to our `globals.css`? |
+|---|---|---|---|
+| `.surface-card`, `.surface-card-hover` | `--card-bg`, `--card-border`, `--radius-xl`, `--card-shadow` | card = component bg; shadows from preset `shadow-elevation-card-rest` | Add as `@layer components` |
+| `.surface-elevated` | `--bg-surface-elevated`, `--radius-2xl`, `--shadow-elevated` | map bg → `bg-ui-bg-component`; shadow → preset `shadow-elevation-modal` | Add as `@layer components` |
+| `.surface-subtle` | `--bg-surface-subtle`, `--border-subtle`, `--radius-lg` | bg → `bg-ui-bg-subtle` | Add as `@layer components` |
+| `.surface-glass` | `rgba(255,255,255,.8)` + `backdrop-filter` | no preset equivalent | Add as `@layer components` (include `.dark` variant) |
+| `.card-base`, `.card-container`, `.card-elevated` | `--card-bg/border/radius/shadow` | see card | Add as `@layer components` (aliases of `.surface-*`) |
+| `.modal-surface`, `.dialog-container` | `--card-bg/border`, `--radius-2xl`, `--shadow-elevated` | modal shadow = preset `shadow-elevation-modal` | Add as `@layer components` |
+| `.drawer-surface`, `.sheet-container` | `--card-bg/border`, `--shadow-elevated` | — | Add as `@layer components` |
+| `.popover-surface`, `.dropdown-menu-surface` | `--card-bg/border`, `--radius-xl`, `--shadow-elevated` | flyout shadow = preset `shadow-elevation-flyout` | Add as `@layer components` |
+| `.product-card-surface` | `--card-bg/border`, `--radius-2xl`, `--card-shadow` | — | Add as `@layer components` |
+| `.checkout-step-surface`, `.order-summary-surface` | `--card-bg/border`, `--radius-2xl`, `--card-shadow`, `padding:1.5rem` | — | Add as `@layer components` |
+| `.toast-surface` | `--card-bg/border`, `--radius-xl`, `--shadow-elevated` | — | Add as `@layer components` |
+| `.table-container`, `.table-row-surface` | `--card-bg/border`, `--radius-xl`, `--border-subtle` | — | Add as `@layer components` |
+| `.navbar-surface`, `.header-surface` | `--bg-surface`, `--border-default` | bg/base border from preset | Add as `@layer components` |
+| `.footer-surface` | `--bg-surface-subtle`, `--border-default` | bg → `bg-ui-bg-subtle` | Add as `@layer components` |
+| `.input-control` | `--input-bg/border/text`, `--radius-md`, `--input-ring` | none | Add as `@layer components` |
+| `.form-label`, `.form-helper-text`, `.form-error-text` | `--text-primary/muted/ sale-text` | none | Add as `@layer components` |
+| `.btn`, `.btn-primary`...`.btn-ghost` | `--btn-primary-*`, `--text-*`, `--border-*` | buttons: preset `bg-ui-button-*` (neutral/danger/inverted/transparent) + `bg-ui-bg-interactive` | Add as `@layer components` (complements — not replaces — the local UI kit `Button`) |
+| `.btn-sm` / `.btn` / `.btn-lg` | sizing tokens | preset sizes via `txt-*` | Add as `@layer components` |
+| `.btn-icon`, `.btn-icon-circle` | `--radius-full`, aspect-ratio lock | none | Add as `@layer components` |
+| `.badge`, `.badge-sale`…`.badge-danger`, `.stock-dot-*` | badge/ stock/ price tokens | preset `bg-ui-tag-*` (green/red/blue/orange/purple/neutral) | Add as `@layer components` |
+| `.price-tag`, `.price-sale`, `.price-original`, `.price-discount-pill` | price tokens | none | Add as `@layer components` |
+| `.tab-pill-active` … `.tab-underline-active` | `--btn-primary-*`, `--text-accent` | none | Add as `@layer components` |
+| `.bg-card`, `.border-card`, `.text-theme-primary`… | token shorthands (`!important`) | these duplicate preset utilities | Add as `@layer utilities` only if the `!important` shorthand is needed |
+| `.scrollbar-thin`, `.scrollbar-none` | native scrollbar colors | ours has `.no-scrollbar` only | Add as `@layer utilities` / `@utility` (v4) |
+| `.divider`, `.divider-subtle`, `.divider-strong` | border tokens | preset `border-ui-border-*` | Add as `@layer utilities` |
+| `.icon-box`, `.icon-base` | `--bg-surface-subtle`, `--border-subtle`, `--radius-md` | none | Add as `@layer components` |
+| `.btn-icon-circle` aspect-ratio lock | `aspect-ratio:1/1` | none | Add as `@layer components` (prevents oval buttons — a consistency fix our storefront lacks) |
+
+**Rule of precedence:** before adding any class above, check whether the **local UI kit** (`modules/common/components/ui/index.tsx`) already satisfies the role:
+- `Button` → covers primary/secondary/transparent; gaps are `outline`, `ghost`, `danger`, `.btn-icon-circle`, size variants → add those as **global** classes in `globals.css` so the kit and raw markup share one button language.
+- `Badge` → covers green/red/blue/orange/grey/purple; gaps are `sale`, `new`, `success`, `warning`, `danger`, `stock-dot-*` → add as global classes.
+- `Text` / `Heading` → already bridge the preset `txt-*` scale; keep using them inside Medusa UI primitives and for page headings use the local `text-*-semi` scale.
+
+### Missing base-level foundations (in `@layer base` / `:root`)
+
+The reference's `@layer base` and `:root` supply a base reset that our storefront omits (it relies on Tailwind `preflight` only). Adopt the missing pieces as additive global rules — they do not override the preset:
+
+| Concern | Reference has it? | Our storefront | Recommendation |
+|---|---|---|---|
+| `*, *::before, *::after { box-sizing:border-box }` | yes | via preflight only | add explicitly for parity |
+| `color-scheme` on `:root`/`.dark` | yes (`light`/`dark`) | not set (preset injects vars only) | add `color-scheme: light` on `:root`, `dark` on `.dark` — enables correct UA scrollbar/theme |
+| `html { -webkit-font-smoothing, -moz-osx-font-smoothing, text-rendering: optimizeLegibility, font-feature-settings, scroll-behavior: smooth, -webkit-tap-highlight-color }` | yes | no | add to `@layer base` |
+| `body { background: var(--bg-canvas), color: var(--text-primary), line-height, min-height:100vh }` | yes | via preset + preflight | wire body bg/text to preset tokens (`bg-ui-bg-base`/`text-ui-fg-base`) |
+| `::selection { background, color }` | yes | none | add — use `--btn-primary-bg` / `--fg-on-color` (Medusa preset vars) |
+| Global `h1`–`h6` base (clamp, letter-spacing, weight, line-height) | yes (`@layer base`) | none — headings rely on `txt-*` / `text-*-semi` classes only | add base heading styles so unmarked `<h1>`–`<h6>` are consistent (still prefer `txt-*` for Medusa primitives) |
+| Global `p`, `b`, `strong`, `a`, `code`, `kbd`, `small` base | yes | none | add base paragraph/link/code styles |
+| `:focus-visible { outline, outline-offset }` | partial (basic) | none | add 2px ring tied to `--border-focus`/`--focus-ring` |
+
+### Missing global-styling features the reference does **not** provide (creative additions for consistency & accessibility)
+
+These go beyond copying the reference — they harden the global style foundation:
+
+1. **Reduced-motion guard.** Neither site has `@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }` in global CSS. The reference ships `ring`/`accordion`/`fade` animations but no motion-safety. Add this to `:root`/base so motion-sensitive users aren't subjected to the preset's `animate-in` / our `fade-in-*` / `accordion-*` / `ring` spinner.
+2. **Screen-reader-only utility (`.visually-hidden` / `.sr-only`).** Neither site defines this globally. Add it to `@layer utilities` — required for icon-only buttons (e.g. the variant `X` close button, mobile-nav toggles) to be accessible without the JS-only `aria-label` hack.
+3. **`text-wrap: balance` on `h1`–`h3`.** Neither site uses it. Add via `@layer base` for cleaner responsive heading wrapping (modern browsers).
+4. **`scroll-margin-top` for in-page anchor targets.** The reference sets `html { scroll-behavior: smooth }` but provides no scroll margin, so anchor jumps under the sticky header are clipped. Add `:target { scroll-margin-top: 4rem; }` (or on `h1`/`h2`/`[id]`) — a pure global fix that pairs with smooth-scroll.
+5. **Standardized reduced-data image placeholder.** Neither site ships a global aspect-ratio placeholder for lazy images. Add a `.image-container` utility with `aspect-w-16 aspect-h-9` (or `aspect-[4/3]`) so product/masonry images reserve space before load — prevents CLS, the reference's single biggest layout-shift source on the home hero carousel.
+
+### Where to edit what (reference additions)
+
+| Want to add... | Edit this file | Section |
+|---|---|---|
+| Missing `:root` semantic tokens (input/badge/price/radius/focus) | `src/styles/globals.css` — add a `:root { ... }` block (currently empty) | new |
+| `.dark` overrides for the same tokens | `src/styles/globals.css` — add `.dark { ... }` | new |
+| Global component surfaces (cards/badges/buttons/pricing/stock) | `src/styles/globals.css` → `@layer components` | extend |
+| Shorthand utilities (scrollbar/divider/surfaces) | `src/styles/globals.css` → `@layer utilities` | extend |
+| Base reset, heading base, focus ring, motion guard | `src/styles/globals.css` → `@layer base` + `:root` | extend |
+| `3xl` radius / `text-wrap: balance` hooks | `tailwind.config.js` → `theme.extend.borderRadius` | extend |
+| Body bg/text wired to preset tokens | `globals.css` `@layer base` `body {}` | extend |
+
+**Do not** create `src/lib/theme-utils.ts`, a `theme.*` Tailwind color namespace, or a runtime accent toggle — those are a *new feature layer*, explicitly out of scope. The accent stays blue-by-default via the Medusa preset, overridable later as a single-value edit in `:root`.

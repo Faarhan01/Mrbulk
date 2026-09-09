@@ -1,351 +1,55 @@
-# Marketing & Google Ads Implementation Research
+# Marketing & Advertising Implementation Research
 
 ## 1. Goal
-Implement marketing tracking and Google Ads conversion measurement for the MedusaJS store at `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js`. The solution should be maintainable, privacy-compliant, and aligned with Medusa’s architecture.
+Implement marketing tracking, attribution, and advertising integrations for the MedusaJS installation at `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js` while maintaining Medusa’s architecture patterns and keeping the codebase upgrade-safe.
 
 ---
 
 ## 2. Current State of Marketing in MedusaJS
 
 ### 2.1 No Native Google Ads Support
-There is **no built-in Google Ads integration** in MedusaJS core, and **no dedicated Google Ads community plugin** exists. The marketing plugin ecosystem is limited to:
+MedusaJS core has **no built-in Google Ads integration**. The marketing plugin ecosystem is limited to:
 
 | Plugin/Tool | Purpose | Status |
 |-------------|---------|--------|
-| `@variablevic/google-analytics-medusa` | GA4 Measurement Protocol server-side tracking | Active, ~2025 |
+| `@variablevic/google-analytics-medusa` | GA4 Measurement Protocol server-side tracking | Active |
 | `medentem/klaviyo-medusa` | Klaviyo email marketing + customer sync | Active |
 | `@tsc_tech/medusa-plugin-product-seo` | Product/category SEO metadata | Active |
-| `erickirt/medusa-marketing` | Action-based email framework | v1 only, needs migration |
-| `medusa-storefront-analytics` | GTM dataLayer adapter for storefronts | Active, 1.5.3 |
+| `medusa-storefront-analytics` | GTM dataLayer adapter for storefronts | Active |
 
 ### 2.2 Medusa Analytics Module
 Medusa v2.8.3+ includes an **Analytics Module** (`@medusajs/medusa/analytics`) with:
 - Provider interface (`track()`, `identify()`)
 - Built-in providers: `analytics-local`, `analytics-posthog`
-- No automatic event wiring — you must call `track()` from workflows/subscribers
-- **Server-side only** — no frontend tracking mechanism
+- **Server-side only** — no automatic frontend wiring
+- You must call `track()` from workflows/subscribers manually
 
 ### 2.3 Feature Request: GTM DataLayer
-There is an active feature request in the Medusa repo for a `@medusajs/gtm-datalayer` package that would:
-- Inject GTM snippet into storefront
-- Map Medusa commerce events to GA4 dataLayer events
-- Serve as a multiplexer for GA4, Meta Pixel, Google Ads, TikTok, etc.
-
-**Status**: Not yet implemented — community opportunity.
+There is an active feature request for `@medusajs/gtm-datalayer` that would inject GTM snippets and map Medusa events to GA4 dataLayer events. **Not yet implemented.**
 
 ---
 
-## 3. Google Ads Tracking Options
+## 3. Google Ads Integration Strategy
 
-### Option A: Server-Side Webhook/API (Recommended for Accuracy)
-Send conversion events directly to Google Ads API from the Medusa backend.
+### 3.1 Recommended Architecture: Hybrid Server + Client
 
-**How it works**:
-1. User clicks Google Ad → lands on site with `gclid` in URL
-2. Store `gclid` in cookie/session
-3. On order placed, backend subscriber fires
-4. Backend calls Google Ads API (`conversionUploads.uploadClickConversions`)
-5. Enhanced conversions: hash email/phone/address and attach
+Combine server-side reliability with client-side flexibility:
 
-**Pros**:
-- Most reliable — no ad blockers, no iOS restrictions
-- Server has all order data — accurate values, items, tax, shipping
-- Real-time attribution
-- Supports Enhanced Conversions for Web
+| Layer | Responsibility |
+|-------|---------------|
+| **Backend subscriber** | Upload purchase conversions to Google Ads API with enhanced conversions |
+| **Backend service** | Wrap Google Ads API client, handle auth, retries, deduplication |
+| **Storefront GTM** | Push `view_item`, `add_to_cart`, `begin_checkout` events to dataLayer |
+| **Admin dashboard** | Show attribution status, conversion logs |
 
-**Cons**:
-- Requires Google Ads API access + developer token
-- Must store and manage `gclid` per session
-- More complex initial setup
+### 3.2 Backend: Google Ads Conversion Service
 
-**Implementation Pattern**:
+Create `apps/backend/src/modules/marketing/`:
+
+**models/marketing-attribution.ts**:
 ```ts
-// apps/backend/src/subscribers/marketing/google-ads-order-placed.ts
-export default async function googleAdsOrderPlacedHandler({
-  data,
-  container,
-}: SubscriberArgs<{ id: string }>) {
-  const orderService = container.resolve(Modules.ORDER)
-  const order = await orderService.retrieve(data.id, {
-    relations: ["customer", "items", "items.variant", "items.variant.product"],
-  })
+import { model } from "@medusajs/framework/utils"
 
-  const gclid = await getGclidFromSession(order.customer_id)
-  if (!gclid) return // not from ad click
-
-  const conversionActionId = process.env.GOOGLE_ADS_CONVERSION_ACTION_ID
-  const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID
-
-  await googleAdsClient.conversionUploads.uploadClickConversions({
-    customerId,
-    conversions: [{
-      conversionAction: `customers/${customerId}/conversionActions/${conversionActionId}`,
-      conversionDateTime: new Date().toISOString(),
-      conversionValue: order.total / 100,
-      currencyCode: order.currency_code,
-      orderId: `order_${order.id}`,
-      gclid,
-      userIdentifiers: [
-        { hashedEmail: await sha256(order.customer.email) },
-        { hashedPhoneNumber: await sha256(order.customer.phone) },
-      ],
-    }],
-  })
-}
-```
-
-**Libraries**:
-- `google-ads-api` (npm) — official Node.js client
-- Or raw HTTP calls to `https://googleads.googleapis.com/v18/customers/{customerId}/conversionUploads:uploadClickConversions`
-
----
-
-### Option B: GTM DataLayer + Server Container (Most Flexible)
-Use Google Tag Manager as a multiplexer. The storefront pushes ecommerce events to `dataLayer`, GTM routes them to Google Ads, GA4, Meta Pixel, etc.
-
-**How it works**:
-1. Install GTM snippet on storefront
-2. Push ecommerce events from storefront:
-   ```ts
-   dataLayer.push({ event: "purchase", transaction_id: "order_123", value: 99.99, currency: "USD", items: [...] })
-   ```
-3. In GTM, configure Google Ads conversion tags triggered on these events
-4. Optionally use GTM server-side container for reliability
-
-**Pros**:
-- One integration → all ad platforms
-- No backend changes needed for basic setup
-- Non-technical marketers can manage tags in GTM UI
-- Standard ecommerce platform pattern (Shopify, WooCommerce)
-
-**Cons**:
-- Client-side only by default — ad blockers affect it
-- Requires GTM setup and tag configuration
-- More moving parts
-
-**Community Package**: `medusa-storefront-analytics` provides a GTM adapter pattern:
-```ts
-import { createGtmAnalyticsAdapter } from "medusa-storefront-analytics"
-const analytics = createGtmAnalyticsAdapter()
-analytics.trackPurchase({ orderId, total, items })
-```
-
----
-
-### Option C: Direct gtag.js Client-Side (Simplest)
-Add Google Ads `gtag.js` snippet directly to the storefront and fire conversion events on order confirmation.
-
-**How it works**:
-1. Add global site tag to `layout.tsx`
-2. On order confirmation page, fire conversion snippet:
-   ```tsx
-   useEffect(() => {
-     if (typeof window !== "undefined" && (window as any).gtag) {
-       (window as any).gtag("event", "conversion", {
-         send_to: "AW-CONVERSION_ID/CONVERSION_LABEL",
-         transaction_id: orderId,
-         value: orderTotal,
-         currency: "USD",
-       })
-     }
-   }, [])
-   ```
-
-**Pros**:
-- Fastest to implement
-- No backend changes
-- Standard Google Ads setup
-
-**Cons**:
-- Least reliable — blocked by ad blockers, iOS restrictions
-- No Enhanced Conversions without additional server work
-- Client can manipulate values
-
----
-
-## 4. Recommended Architecture: Hybrid Approach
-
-Combine **Option A** (server-side API) for reliability + **Option B** (GTM dataLayer) for flexibility.
-
-### 4.1 Backend: Google Ads Subscriber + Service
-
-Create a marketing plugin/module:
-
-```
-apps/backend/src/
-  modules/
-    marketing/
-      models/
-        marketing-attribution.ts    # stores gclid, conversion data
-      service.ts
-      index.ts
-  subscribers/
-    marketing/
-      google-ads-order-placed.ts
-      google-ads-cart-updated.ts   # optional, for add_to_cart
-  workflows/
-    marketing/
-      track-google-ads-conversion.ts
-```
-
-**Key components**:
-
-1. **Marketing Attribution Service**: stores `gclid`, `session_id`, conversion timestamps
-2. **Google Ads Service**: wraps Google Ads API client, handles auth, retries
-3. **Order Placed Subscriber**: fires on `order.placed`, calls Google Ads API with enhanced conversions
-4. **Cart Updated Subscriber**: fires on `cart.updated`, tracks `add_to_cart` / `remove_from_cart` as secondary conversions
-
-**Event mapping**:
-
-| Medusa Event | Google Ads Conversion Action | Type |
-|---|---|---|
-| `order.placed` | Purchase | Primary |
-| `cart.updated` (add item) | Add to cart | Secondary |
-| `cart.updated` (remove item) | Remove from cart | Secondary |
-| `customer.registered` | Sign-up | Secondary |
-| `order.shipped` | Shipment | Secondary |
-
-### 4.2 GCLID Capture Strategy
-
-Store the `gclid` parameter when users land from Google Ads:
-
-```ts
-// apps/storefront/src/middleware.ts (extend existing)
-export function middleware(request: NextRequest) {
-  const gclid = request.nextUrl.searchParams.get("gclid")
-  if (gclid) {
-    const response = NextResponse.next()
-    response.cookies.set("gclid", gclid, {
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      httpOnly: true,
-      sameSite: "lax",
-    })
-    return response
-  }
-}
-```
-
-Pass `gclid` to backend:
-- As cart metadata on creation: `body.metadata = { gclid: cookies.get("gclid") }`
-- As customer metadata on registration
-- Backend stores it and uses it for conversion upload
-
-### 4.3 Frontend: GTM DataLayer Integration
-
-Use the `medusa-storefront-analytics` package or build a lightweight GTM wrapper:
-
-```ts
-// apps/storefront/src/lib/marketing/gtm.ts
-export const trackEvent = (eventName: string, params: Record<string, any>) => {
-  if (typeof window !== "undefined" && (window as any).dataLayer) {
-    (window as any).dataLayer.push({ event: eventName, ...params })
-  }
-}
-
-export const trackPurchase = (order: Order) => {
-  trackEvent("purchase", {
-    transaction_id: order.id,
-    value: order.total / 100,
-    currency: order.currency_code,
-    tax: order.tax_total / 100,
-    shipping: order.shipping_total / 100,
-    items: order.items.map((item) => ({
-      item_id: item.variant_id,
-      item_name: item.title,
-      item_category: item.variant.product.categories?.[0]?.name,
-      price: item.unit_price / 100,
-      quantity: item.quantity,
-    })),
-  })
-}
-```
-
-**Events to track**:
-
-| Storefront Event | dataLayer Event | Trigger |
-|---|---|---|
-| Product list viewed | `view_item_list` | Home, category, collection pages |
-| Product viewed | `view_item` | PDP mount |
-| Add to cart | `add_to_cart` | Cart add success |
-| Remove from cart | `remove_from_cart` | Cart remove success |
-| View cart | `view_cart` | Cart page |
-| Begin checkout | `begin_checkout` | Checkout step 1 |
-| Add shipping info | `add_shipping_info` | Shipping step |
-| Add payment info | `add_payment_info` | Payment step |
-| Purchase | `purchase` | Order confirmation |
-| Search | `search` | Search results |
-
-### 4.4 Google Ads Conversion Actions Setup
-
-In Google Ads UI, create these conversion actions:
-
-1. **Purchase** (Primary)
-   - Category: Purchase
-   - Value: Use different value for each conversion
-   - Count: Every
-   - Attribution: 30-day click, 1-day view
-   - Enhanced conversions: ON
-
-2. **Add to Cart** (Secondary)
-   - Category: Add to cart
-   - Value: Use default value or dynamic
-   - Count: Every
-   - Enhanced conversions: ON
-
-3. **Sign-up** (Secondary, if applicable)
-   - Category: Sign-up
-   - Count: One
-
----
-
-## 5. Implementation Steps
-
-### Phase 1: Backend Foundation
-1. Create `apps/backend/src/modules/marketing/` with attribution model
-2. Create Google Ads service wrapping API client
-3. Add `gclid` capture middleware to storefront
-4. Create `track-google-ads-conversion.ts` workflow
-
-### Phase 2: Event Subscribers
-1. `order.placed` → upload purchase conversion
-2. `cart.updated` → upload add_to_cart / remove_from_cart
-3. `customer.created` → upload sign-up conversion (optional)
-
-### Phase 3: Storefront Tracking
-1. Add GTM snippet to `layout.tsx` (or use direct gtag.js)
-2. Create `lib/marketing/gtm.ts` with event helpers
-3. Integrate `trackAddToCart` in cart actions
-4. Integrate `trackPurchase` on order confirmation
-5. Integrate `trackViewItem` on PDP
-
-### Phase 4: Enhanced Conversions
-1. Collect email/phone/address in order flow
-2. Hash with SHA-256 before sending
-3. Include in `userIdentifiers` array in API call
-4. Accept customer data terms in Google Ads
-
-### Phase 5: Testing & Validation
-1. Use Google Ads API sandbox/test mode
-2. Verify conversions in Google Ads UI (24-48h delay for API uploads)
-3. Cross-check with GA4 data
-4. Test deduplication between server-side and client-side
-
----
-
-## 6. Code Architecture
-
-### 6.1 Backend Module Structure
-
-```
-apps/backend/src/modules/marketing/
-  models/
-    marketing-attribution.ts
-  service.ts
-  index.ts
-```
-
-**marketing-attribution.ts**:
-```ts
 const MarketingAttribution = model.define("marketing_attribution", {
   id: model.id().primaryKey(),
   customer_id: model.text().nullable(),
@@ -358,12 +62,83 @@ const MarketingAttribution = model.define("marketing_attribution", {
   converted_at: model.date().nullable(),
   metadata: model.json().nullable(),
 })
+
+export default MarketingAttribution
 ```
 
-### 6.2 Google Ads Service
+**service.ts** — extends `MedusaService` for CRUD + Google Ads API wrapper methods.
+
+**index.ts**:
+```ts
+import { Module } from "@medusajs/framework/utils"
+import MarketingModuleService from "./service"
+
+export const MARKETING_MODULE = "marketing"
+
+export default Module(MARKETING_MODULE, {
+  service: MarketingModuleService,
+})
+```
+
+### 3.3 GCLID Capture Flow
+
+1. User clicks Google Ad → lands on site with `gclid` in URL
+2. Storefront middleware captures `gclid` into httpOnly cookie (30-day expiry)
+3. Cookie passes to backend as cart/customer metadata on creation
+4. Backend stores attribution and uses it on order placement
+
+**Storefront middleware** (`apps/storefront/src/middleware.ts`):
+```ts
+export function middleware(request: NextRequest) {
+  const gclid = request.nextUrl.searchParams.get("gclid")
+  if (gclid) {
+    const response = NextResponse.next()
+    response.cookies.set("gclid", gclid, {
+      maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
+      sameSite: "lax",
+    })
+    return response
+  }
+}
+```
+
+### 3.4 Order Placed Subscriber
+
+Create `apps/backend/src/subscribers/marketing/google-ads-order-placed.ts`:
 
 ```ts
-// apps/backend/src/services/google-ads.ts
+export default async function googleAdsOrderPlacedHandler({ data, container }) {
+  const orderService = container.resolve(Modules.ORDER)
+  const marketingService = container.resolve(MARKETING_MODULE)
+
+  const order = await orderService.retrieveWithTotals(data.id, {
+    relations: ["customer", "items", "items.variant", "shipping_address"],
+  })
+
+  const attribution = await marketingService.getAttributionForOrder(order.id)
+  if (!attribution?.gclid) return
+
+  await marketingService.uploadGoogleAdsConversion({
+    customerId: process.env.GOOGLE_ADS_CUSTOMER_ID,
+    conversionActionId: process.env.GOOGLE_ADS_CONVERSION_ACTION_ID,
+    orderId: `order_${order.id}`,
+    value: order.total / 100,
+    currency: order.currency_code,
+    gclid: attribution.gclid,
+    userData: {
+      hashedEmail: await sha256(order.customer.email),
+      hashedPhone: await sha256(order.customer.phone),
+    },
+  })
+}
+
+export const config = { event: "order.placed" }
+```
+
+### 3.5 Google Ads Service Wrapper
+
+```ts
 import { GoogleAdsApi } from "google-ads-api"
 
 export class GoogleAdsService {
@@ -377,30 +152,22 @@ export class GoogleAdsService {
     })
   }
 
-  async uploadConversion({
-    customerId,
-    conversionActionId,
-    orderId,
-    value,
-    currency,
-    gclid,
-    userData,
-  }: ConversionPayload) {
+  async uploadConversion(payload: ConversionPayload) {
     const customer = this.client.Customer({
-      customer_id: customerId,
+      customer_id: payload.customerId,
       refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
     })
 
     return customer.conversionUploads.uploadClickConversions({
-      customer_id: customerId,
+      customer_id: payload.customerId,
       conversions: [{
-        conversion_action: `customers/${customerId}/conversionActions/${conversionActionId}`,
+        conversion_action: `customers/${payload.customerId}/conversionActions/${payload.conversionActionId}`,
         conversion_date_time: new Date().toISOString(),
-        conversion_value: value,
-        currency_code: currency,
-        order_id: orderId,
-        gclid,
-        user_identifiers: userData,
+        conversion_value: payload.value,
+        currency_code: payload.currency,
+        order_id: payload.orderId,
+        gclid: payload.gclid,
+        user_identifiers: payload.userData,
       }],
       partial_failure: true,
     })
@@ -408,161 +175,278 @@ export class GoogleAdsService {
 }
 ```
 
-### 6.3 Subscriber Pattern
+---
+
+## 4. Storefront Tracking (GTM / GA4)
+
+### 4.1 GTM DataLayer Utility
+
+Create `apps/storefront/src/lib/marketing/gtm.ts`:
 
 ```ts
-// apps/backend/src/subscribers/marketing/google-ads-order-placed.ts
-import { Modules } from "@medusajs/framework/utils"
-import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
+export interface GA4Item {
+  item_id: string
+  item_name: string
+  price: number
+  quantity: number
+  item_brand?: string
+  item_category?: string
+  item_variant?: string
+  currency?: string
+  index?: number
+}
 
-const uploadGoogleAdsConversionStep = createStep(
-  "upload-google-ads-conversion-step",
-  async ({ orderId }, { container }) => {
-    const orderService = container.resolve(Modules.ORDER)
-    const marketingService = container.resolve(MARKETING_MODULE)
-    const googleAdsService = container.resolve("googleAdsService")
+export interface GA4EcommerceEvent {
+  event: string
+  ecommerce: {
+    currency?: string
+    value?: number
+    transaction_id?: string
+    tax?: number
+    shipping?: number
+    coupon?: string
+    items?: GA4Item[]
+  }
+}
 
-    const order = await orderService.retrieveWithTotals(orderId, {
-      relations: ["customer", "items", "items.variant", "shipping_address"],
-    })
+export function pushToDataLayer(eventData: GA4EcommerceEvent) {
+  if (typeof window === "undefined") return
+  window.dataLayer = window.dataLayer || []
+  window.dataLayer.push(eventData)
+}
 
-    const attribution = await marketingService.getAttributionForOrder(orderId)
-    if (!attribution?.gclid) return new StepResponse(null, null)
+export function trackViewItem(product, currency = "zar") {
+  pushToDataLayer({
+    event: "view_item",
+    ecommerce: { currency, value: product.price, items: [{ item_id: product.id, item_name: product.title, price: product.price, quantity: 1 }] },
+  })
+}
 
-    await googleAdsService.uploadConversion({
-      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID!,
-      conversionActionId: process.env.GOOGLE_ADS_CONVERSION_ACTION_ID!,
-      orderId: `order_${order.id}`,
+export function trackAddToCart(product, quantity = 1, currency = "zar") {
+  pushToDataLayer({
+    event: "add_to_cart",
+    ecommerce: { currency, value: product.price * quantity, items: [{ item_id: product.id, item_name: product.title, price: product.price, quantity }] },
+  })
+}
+
+export function trackPurchase(order, currency = "zar") {
+  pushToDataLayer({
+    event: "purchase",
+    ecommerce: {
+      transaction_id: order.id,
       value: order.total / 100,
-      currency: order.currency_code,
-      gclid: attribution.gclid,
-      userData: {
-        hashedEmail: await sha256(order.customer.email),
-        hashedPhone: await sha256(order.customer.phone),
-        hashedFirstName: await sha256(order.customer.first_name),
-        hashedLastName: await sha256(order.customer.last_name),
-      },
+      currency,
+      tax: order.tax_total / 100,
+      shipping: order.shipping_total / 100,
+      items: order.items.map((item, idx) => ({
+        item_id: item.variant_id,
+        item_name: item.title,
+        price: item.unit_price / 100,
+        quantity: item.quantity,
+        item_category: item.variant?.product?.categories?.[0]?.name,
+        index: idx + 1,
+      })),
+    },
+  })
+}
+```
+
+### 4.2 GTM Snippet Injection
+
+Inject GTM script in `apps/storefront/src/app/[countryCode]/layout.tsx`:
+
+```tsx
+{process.env.NEXT_PUBLIC_GTM_ID && (
+  <>
+    <script
+      id="gtm-script-tag"
+      async
+      src={`https://www.googletagmanager.com/gtm.js?id=${process.env.NEXT_PUBLIC_GTM_ID}`}
+    />
+    <noscript>
+      <iframe
+        src={`https://www.googletagmanager.com/ns.html?id=${process.env.NEXT_PUBLIC_GTM_ID}`}
+        style={{ display: "none" }}
+      />
+    </noscript>
+  </>
+)}
+```
+
+### 4.3 Event Mapping
+
+| Storefront Event | dataLayer Event | Trigger Point |
+|-----------------|-----------------|---------------|
+| Product list viewed | `view_item_list` | Home, category, collection pages |
+| Product viewed | `view_item` | PDP mount |
+| Add to cart | `add_to_cart` | Cart add success |
+| Begin checkout | `begin_checkout` | Checkout step 1 |
+| Add shipping info | `add_shipping_info` | Shipping step |
+| Add payment info | `add_payment_info` | Payment step |
+| Purchase | `purchase` | Order confirmation |
+
+---
+
+## 5. Google Shopping / Product Feed
+
+### 5.1 Feed API Route
+
+Create `apps/backend/src/api/store/feeds/google-shopping/route.ts`:
+
+```ts
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  const productService = req.scope.resolve("product")
+  const { data: products } = await productService.listProducts(
+    { status: "published" },
+    { relations: ["variants", "variants.prices", "categories"] }
+  )
+
+  const xml = generateGoogleShoppingFeed(products)
+  res.setHeader("Content-Type", "application/xml")
+  res.send(xml)
+}
+```
+
+### 5.2 Feed Generation
+
+Generate RSS 2.0 / XML feed conforming to Google Shopping spec:
+- `<title>`, `<link>`, `<description>` per product
+- `<g:price>` with currency
+- `<g:image>`, `<g:brand>`, `<g:category>`
+- `<g:availability>` based on inventory
+- `<g:condition>` (new/refurbished/used)
+- `<g:gtin>` if available in product metadata
+
+### 5.3 Scheduled Job
+
+Create `apps/backend/src/jobs/regenerate-product-feed.ts`:
+```ts
+export default async function regenerateProductFeed(container) {
+  const feedService = container.resolve("feedService")
+  await feedService.generateGoogleShoppingFeed()
+}
+
+export const config = {
+  name: "regenerate-product-feed",
+  schedule: "0 0 * * *", // daily at midnight
+}
+```
+
+---
+
+## 6. Email Marketing Integration
+
+### 6.1 Subscriber Pattern
+
+Create `apps/backend/src/subscribers/marketing/`:
+
+**customer-registered.ts** — trigger welcome email workflow
+**order-placed.ts** — trigger order confirmation + upsell campaigns
+**cart-abandoned.ts** — trigger recovery email (requires cart timestamp tracking)
+
+### 6.2 Klaviyo Integration
+
+Use `medentem/klaviyo-medusa` plugin or build custom subscriber:
+```ts
+export default async function orderPlacedHandler({ data, container }) {
+  const klaviyoService = container.resolve("klaviyoService")
+  const order = await orderService.retrieveWithTotals(data.id)
+  await klaviyoService.trackEvent("Placed Order", {
+    customer_email: order.customer.email,
+    order_id: order.id,
+    value: order.total / 100,
+    items: order.items,
+  })
+}
+```
+
+---
+
+## 7. SEO / Product Metadata
+
+### 7.1 Product Metadata Fields
+
+Use Medusa’s built-in `metadata` JSON field on products for SEO:
+```ts
+{
+  meta_title: "Product Name | Store Name",
+  meta_description: "SEO description...",
+  og_image: "https://...",
+  canonical_url: "https://..."
+}
+```
+
+### 7.2 Admin UI Extension
+
+Add SEO fields to product edit page in admin:
+- Widget on product detail page
+- Save to `product.metadata` via update workflow
+
+### 7.3 Storefront Metadata Injection
+
+Read metadata in storefront PDP and inject into Next.js `metadata` export:
+```ts
+export async function generateMetadata({ params }) {
+  const product = await sdk.store.product.retrieve(params.id)
+  return {
+    title: product.metadata?.meta_title || product.title,
+    description: product.metadata?.meta_description || product.description,
+    openGraph: { images: [product.metadata?.og_image || product.thumbnail] },
+  }
+}
+```
+
+---
+
+## 8. Attribution & Analytics Architecture
+
+### 8.1 Backend Module Structure
+
+```
+apps/backend/src/modules/marketing/
+  models/
+    marketing-attribution.ts
+  service.ts
+  index.ts
+```
+
+### 8.2 Service Methods
+
+- `createAttribution(data)` — store gclid, session, source
+- `getAttributionForOrder(orderId)` — retrieve attribution linked to order
+- `markConverted(orderId)` — mark attribution as converted
+- `uploadGoogleAdsConversion(payload)` — call Google Ads API
+- `uploadMetaConversion(payload)` — call Meta Conversions API (future)
+
+### 8.3 Workflow: Track Conversion
+
+```ts
+export const trackMarketingConversionWorkflow = createWorkflow(
+  "track-marketing-conversion",
+  function (input: { orderId: string }) {
+    const attribution = useQueryGraphStep({
+      entity: "marketing_attribution",
+      fields: ["*"],
+      filters: { order_id: input.orderId },
     })
 
-    await marketingService.markConverted(orderId)
-    return new StepResponse({ success: true }, { orderId })
-  },
-  async (_, { container }) => {
-    // compensation — mark as not converted
+    const uploaded = transform({ attribution }, (data) => {
+      if (!data.attribution.length?.gclid) return null
+      return uploadGoogleAdsConversionStep({ ...data.attribution[0] })
+    })
+
+    markConvertedStep({ orderId: input.orderId })
+
+    return new WorkflowResponse({ uploaded })
   }
 )
 ```
 
 ---
 
-## 7. GTM DataLayer Alternative
-
-If you prefer GTM over direct API calls:
-
-### 7.1 Install medusa-storefront-analytics
-```bash
-pnpm add medusa-storefront-analytics
-```
-
-### 7.2 Configure Adapter
-```ts
-// apps/storefront/src/lib/analytics.ts
-import { createGtmAnalyticsAdapter, composeAnalyticsAdapters } from "medusa-storefront-analytics"
-
-export const analytics = composeAnalyticsAdapters([
-  createGtmAnalyticsAdapter({
-    containerId: process.env.NEXT_PUBLIC_GTM_ID!,
-  }),
-])
-```
-
-### 7.3 Track Events
-```ts
-// apps/storefront/src/lib/data/marketing.ts
-"use server"
-import { analytics } from "@lib/analytics"
-
-export const trackAddToCart = (variant: ProductVariant) => {
-  analytics.trackAddToCart({
-    productId: variant.product_id,
-    variantId: variant.id,
-    name: variant.title,
-    price: variant.calculated_price / 100,
-    quantity: 1,
-  })
-}
-
-export const trackPurchase = (order: Order) => {
-  analytics.trackPurchase({
-    orderId: order.id,
-    total: order.total / 100,
-    currency: order.currency_code,
-    items: order.items.map((item) => ({
-      productId: item.product_id,
-      variantId: item.variant_id,
-      name: item.title,
-      price: item.unit_price / 100,
-      quantity: item.quantity,
-    })),
-  })
-}
-```
-
-### 7.4 GTM Configuration
-In Google Tag Manager:
-1. Create GA4 Configuration tag with your Measurement ID
-2. Create Google Ads Conversion tag for Purchase event
-3. Set trigger: Custom Event → `purchase`
-4. Map dataLayer variables: `transaction_id`, `value`, `currency`, `items`
-5. Enable Enhanced Conversions with user-provided data
-
----
-
-## 8. Google Ads API vs GTM Comparison
-
-| Aspect | Direct API (Option A) | GTM DataLayer (Option B) |
-|--------|----------------------|--------------------------|
-| **Reliability** | High — server-side, no ad blockers | Medium — client-side, can be blocked |
-| **Accuracy** | Exact order data from backend | Depends on client data availability |
-| **Enhanced Conversions** | Native support | Requires GTM configuration |
-| **Multi-platform** | Need separate API calls per platform | GTM routes to all platforms |
-| **Setup Complexity** | Higher — API auth, OAuth, developer token | Medium — GTM container + tags |
-| **Maintenance** | Monitor API version changes | GTM handles platform updates |
-| **Attribution** | Uses `gclid` from click | Uses `gclid` or cookie-based |
-| **Real-time** | Near real-time (API latency) | Real-time (client-side) |
-| **Cost** | Free API, but dev time | Free GTM + minimal dev time |
-
-**Recommendation**: Use **Option A** for Purchase conversions (most critical, highest value), and **Option B** for secondary events (add_to_cart, view_item) where real-time client data is sufficient.
-
----
-
-## 9. Privacy & Compliance
-
-### 9.1 Consent Requirements
-- **EU**: Require cookie consent before setting `gclid` cookie or firing tracking pixels
-- **Enhanced Conversions**: Must accept customer data terms in Google Ads UI
-- **GDPR**: Hash personal data before sending to Google Ads API
-
-### 9.2 Data Handling
-```ts
-// Always hash sensitive data before sending
-async function sha256(value: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(value.toLowerCase().trim())
-  const hash = await crypto.subtle.digest("SHA-256", data)
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("")
-}
-```
-
-### 9.3 GCLID Storage
-- Store in httpOnly cookie with 30-day expiry
-- Associate with customer session/order
-- Delete after conversion upload or expiry
-- Never expose in client-side code
-
----
-
-## 10. Environment Variables Required
+## 9. Environment Variables
 
 ```env
 # Google Ads API
@@ -573,68 +457,125 @@ GOOGLE_ADS_REFRESH_TOKEN=your_refresh_token
 GOOGLE_ADS_CUSTOMER_ID=1234567890
 GOOGLE_ADS_CONVERSION_ACTION_ID=purchase_conversion_action_id
 
-# GTM (if using GTM approach)
+# GTM / GA4 (storefront)
 NEXT_PUBLIC_GTM_ID=GTM-XXXXXXX
-
-# GA4 (if using GA4 alongside)
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-GA_API_SECRET=your_api_secret
+
+# Klaviyo (if using)
+KLAVIYO_API_KEY=your_api_key
+KLAVIYO_LIST_ID=your_list_id
 ```
 
 ---
 
-## 11. Testing Strategy
+## 10. Privacy & Compliance
 
-### 11.1 Google Ads Test Conversions
+### 10.1 Consent Requirements
+- **EU/UK**: Require cookie consent before setting `gclid` cookie or firing tracking pixels
+- **Enhanced Conversions**: Must accept customer data terms in Google Ads UI
+- **GDPR**: Hash personal data before sending to Google Ads/Meta APIs
+
+### 10.2 Data Handling
+
+```ts
+async function sha256(value: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(value.toLowerCase().trim())
+  const hash = await crypto.subtle.digest("SHA-256", data)
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("")
+}
+```
+
+### 10.3 GCLID Storage
+- Store in httpOnly cookie with 30-day expiry
+- Associate with customer session/order
+- Delete after conversion upload or expiry
+- Never expose in client-side code
+
+---
+
+## 11. Implementation Phases
+
+### Phase 1: Foundation
+1. Create `marketing` module with attribution model
+2. Add GCLID capture middleware to storefront
+3. Create Google Ads service wrapper
+4. Create `track-google-ads-conversion` workflow
+
+### Phase 2: Event Subscribers
+1. `order.placed` → upload purchase conversion
+2. `customer.created` → upload sign-up conversion
+3. `cart.updated` → track add_to_cart / remove_from_cart (optional)
+
+### Phase 3: Storefront Tracking
+1. Add GTM snippet to `layout.tsx`
+2. Create `lib/marketing/gtm.ts` with event helpers
+3. Integrate `trackAddToCart` in cart actions
+4. Integrate `trackPurchase` on order confirmation
+5. Integrate `trackViewItem` on PDP
+
+### Phase 4: Enhanced Conversions
+1. Collect email/phone/address in order flow
+2. Hash with SHA-256 before sending
+3. Include in `userIdentifiers` array in API call
+4. Accept customer data terms in Google Ads
+
+### Phase 5: Product Feed
+1. Create `/store/feeds/google-shopping` API route
+2. Generate XML feed from Medusa products
+3. Add scheduled job for daily regeneration
+4. Submit feed URL to Google Merchant Center
+
+### Phase 6: Admin Dashboard
+1. Add marketing attribution widget to admin
+2. Show conversion status per order
+3. Add feed management page
+
+---
+
+## 12. Testing Strategy
+
+### 12.1 Google Ads Test Conversions
 1. Enable test mode in Google Ads account
 2. Use test conversion action ID
 3. Verify conversions appear in Google Ads UI within 24h
 4. Check for `partial_failure` errors in API response
 
-### 11.2 Debug Mode
-```ts
-// In Google Ads service
-const DEBUG = process.env.GOOGLE_ADS_DEBUG === "true"
-// Logs full request/response without affecting production data
-```
-
-### 11.3 Validation Checklist
+### 12.2 Validation Checklist
 - [ ] `gclid` captured from ad click and stored in cookie
 - [ ] `gclid` passed to cart creation as metadata
 - [ ] `gclid` associated with order on placement
 - [ ] Conversion uploaded within 5 minutes of order
 - [ ] Enhanced conversions hashed correctly
-- [ ] Deduplication works (same order_id not counted twice)
+- [ ] Deduplication works (same `order_id` not counted twice)
 - [ ] Conversions appear in Google Ads UI
 - [ ] GA4 ecommerce events fire in parallel
 - [ ] Ad blocker fallback works (client-side backup)
 
 ---
 
-## 12. Future Enhancements
+## 13. Future Enhancements
 
-1. **Meta Pixel Integration**: Extend the same subscriber pattern to Meta Conversions API
-2. **TikTok/ Pinterest Ads**: Add additional ad platform adapters
+1. **Meta Pixel Integration**: Extend same subscriber pattern to Meta Conversions API
+2. **TikTok/Pinterest Ads**: Add additional ad platform adapters
 3. **Customer List Upload**: Upload customer lists for remarketing audiences
 4. **Offline Conversion Import**: Import in-store/phone conversions
-5. **Attribution Reporting**: Build internal dashboard showing ad performance
+5. **Attribution Dashboard**: Build internal dashboard showing ad performance
 6. **A/B Testing**: Use conversion data to optimize ad spend
 
 ---
 
-## 13. Sources
+## 14. Sources
 
 - Google Ads Conversions API: https://developers.google.com/google-ads/api/docs/conversions/overview
 - Enhanced Conversions for Web: https://developers.google.com/google-ads/api/docs/conversions/enhanced-conversions/web
 - GTM Server-Side Ads Setup: https://developers.google.com/tag-platform/tag-manager/server-side/ads-setup
-- Google Ads Webhooks Guide (Luc Flynn): https://lucflynn.com/tracking/webhooks-google-ads-setup
 - Medusa Analytics Module: https://docs.medusajs.com/resources/infrastructure-modules/analytics
 - Medusa GTM Feature Request: https://github.com/medusajs/medusa/discussions/14865
 - `medusa-storefront-analytics` package: https://www.npmjs.com/package/medusa-storefront-analytics
-- `@variablevic/google-analytics-medusa`: https://github.com/VariableVic/google-analytics-medusa
 - Local project context: `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js`
 
 ---
 
-*Research compiled: 2026-09-07*
+*Research compiled: 2026-09-08*
 *Based on MedusaJS v2.20.1, Google Ads API v18, and current marketing integration patterns*

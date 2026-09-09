@@ -1,395 +1,338 @@
 # Multivendor Marketplace Implementation Research
 
 ## 1. Goal
-Add multivendor marketplace capabilities to the existing MedusaJS installation at `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js` while keeping the architecture clean, upgrade-safe, and aligned with Medusa’s official extension patterns.
+Add multivendor marketplace capabilities to the MedusaJS installation at `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js` while keeping the architecture clean, upgrade-safe, and aligned with Medusa’s official extension patterns.
 
 ---
 
-## 2. What MercurJS Does Well (Reference Implementation)
+## 2. Reference Implementations
 
-MercurJS is the most complete open-source multivendor layer built on MedusaJS. Its codebase (`mercurjs/mercur`) shows a production-grade implementation pattern.
+### 2.1 Official Medusa Marketplace Recipe
+Medusa’s official docs provide a vendor marketplace recipe (`docs.medusajs.com/resources/recipes/marketplace`) that shows the canonical approach:
+- Custom `marketplace` module with `Vendor` + `VendorAdmin` data models
+- Module links between Vendor, Product, and Order
+- Vendor-scoped API routes under `/vendors/*`
+- Custom actor type `vendor` for authentication
+- Order splitting via workflow extension
 
-### 2.1 Core Domain Model
-- **Seller**: marketplace vendor entity with handle, status (`pending_approval`, `open`, `suspended`, `terminated`), address, payment details, `is_premium` flag, scheduled closures (`closed_from` / `closed_to`).
-- **Member**: many-to-many user-to-seller relationship. A user can belong to multiple sellers and switch between them. Invitations via `invite-seller` / `accept-member-invite`.
-- **Master Product**: single shared catalog, NOT owned by any seller. Sellers get an allowlist via `product-seller-link`.
-- **Offer**: the actual sellable listing. Each offer ties a seller to a master product/variant with seller-specific SKU, price (pricing rule), inventory item, and shipping profile. Cart line items reference the purchased offer.
-- **Order Group**: parent wrapper for a single customer cart split across multiple sellers. Contains per-seller child orders, exposes `display_id`, `seller_count`, `total`.
-- **Commission**: rule-based fee structure matched across `product`, `product_type`, `product_collection`, `product_category`, `seller`. Most-specific-wins resolution. Uses BigNumber for financial precision.
-- **Payout**: automated settlement to seller connected accounts (Stripe Connect out of box). Daily job at 1 AM UTC emits `payout.requested`.
+This is the **recommended baseline** because it uses only public Medusa APIs.
 
-### 2.2 Module Structure (`packages/core/src/modules/`)
-MercurJS core plugin contains these marketplace modules:
-- `seller` — registration, profiles, members, order groups
-- `commission` — rates, rules, calculation
-- `offer` — seller listings against master products
-- `payout` — accounts, onboarding, payouts
-- `product-attribute` — typed attribute catalog
-- `product-edit` — change-request pipeline
-- `order-group` — multi-vendor order wrapper
-- `media`, `custom-fields`, `review`, `promotion-cost`, `admin-ui`, `vendor-ui`, `codegen`
+### 2.2 MercurJS (Production Reference)
+MercurJS is the most complete open-source marketplace layer built on Medusa. Key patterns to study:
 
-### 2.3 Link-Heavy Architecture
-MercurJS uses **dozens of module links** to wire the marketplace layer into Medusa commerce without touching core schemas:
+**Domain model:**
+- `Seller` — vendor entity with handle, status (`pending_approval` / `open` / `suspended` / `terminated`), address, payment details, `is_premium`, scheduled closures
+- `Member` — many-to-many user-to-seller relationship with roles
+- `Master Product` — shared catalog, sellers get allowlist via `product-seller-link`
+- `Offer` — sellable listing tying seller to master product/variant with seller-specific SKU, price, inventory, shipping
+- `OrderGroup` — parent wrapper for a cart split across sellers
+- `Commission` — rule-based fees matched across product/category/seller dimensions
+- `Payout` — automated settlement via Stripe Connect
 
-**Seller-centric links:**
-- `product-seller-link.ts` — allowlist which sellers may sell which products
-- `order-seller-link.ts` — associate orders with sellers
-- `offer-seller-link.ts` — link offers to sellers
-- `payout-seller-link.ts` — link payouts to sellers
-- `price-list-seller-link.ts` — seller-specific pricing
-- `shipping-profile-seller-link.ts` — seller shipping configs
-- `shipping-option-seller-link.ts` — seller shipping options
-- `stock-location-seller-link.ts` — seller inventory locations
-- `fulfillment-set-seller-link.ts` — seller fulfillment sets
-- `service-zone-seller-link.ts` — seller service zones
-- `inventory-item-seller-link.ts` — seller inventory items
-- `campaign-seller-link.ts` — seller campaigns
-- `promotion-seller-link.ts` — seller promotions
-- `seller-customer-link.ts` — seller customer relationships
-- `seller-customer-group-link.ts` — seller customer groups
-- `seller-member-rbac-role.ts` — seller role assignments
-- `seller-review.ts` — seller reviews
-- `seller-payout-account-link.ts` — seller payout accounts
+**Architecture principles:**
+- Modules never reference each other directly — only links and workflows
+- Dozens of module links wire marketplace into commerce without touching core schemas
+- Workflows support compensation (automatic rollback on failure)
+- Scheduled jobs + subscribers handle async side effects
 
-**Offer-centric links:**
-- `offer-product-link.ts` — offer to master product
-- `offer-variant-link.ts` — offer to variant
-- `offer-inventory-item-link.ts` — offer inventory
-- `offer-price-link.ts` — offer pricing
-- `offer-shipping-profile-link.ts` — offer shipping
+---
 
-**Order flow links:**
-- `order-group-cart-link.ts` — order group to originating cart
-- `order-group-order-link.ts` — order group to child orders
-- `order-line-item-offer-link.ts` — line items to offers
-- `order-payout-link.ts` — orders to payouts
-- `order-review.ts` — order reviews
-- `cart-line-item-offer-link.ts` — cart line items to offers
+## 3. Recommended Approach: Native Medusa Implementation
 
-### 2.4 Workflow Patterns
-MercurJS uses Medusa’s workflow engine extensively:
-- **Seller lifecycle**: create, approve, suspend, unsuspend, terminate
-- **Member invites**: invite-seller, accept-member-invite
-- **Commission flows**: batch-commission-rules, refresh-order-commission-lines
-- **Payout pipeline**: capture-check job (every 15 min) → authorized payment capture → daily `payout.requested` → `createPayoutWorkflow`
-- **Order splitting**: complete cart → create OrderGroup → split by seller → create per-seller orders → calculate commissions → split payment
-- **Product change pipeline**: immutable `ProductChange` records with `UPDATE`, `VARIANT_*`, `ATTRIBUTE_*`, `STATUS_CHANGE` actions
+### 3.1 Strategy
+Build marketplace features directly in `apps/backend/src/` using Medusa’s module/link/workflow/API-route pattern. Do **not** fork MercurJS. This gives full control, avoids upgrade coupling, and keeps the codebase consistent with the existing DTC starter.
 
-All workflows support **compensation** (automatic rollback on failure) and expose **hooks** as extension points.
+### 3.2 Phase 1: Marketplace Module Foundation
 
-### 2.5 Frontend Architecture
-MercurJS uses **separate Vite apps** for each dashboard:
-
+**Create module:**
 ```
-apps/
-  admin-test/   — Vite on port 7000, mounts @mercurjs/admin
-  vendor/       — Vite on port 7001, mounts @mercurjs/vendor
-  api/          — Medusa 2.x server
-  docs/         — Mintlify documentation site
+apps/backend/src/modules/marketplace/
+  models/
+    vendor.ts
+    vendor-admin.ts
+  service.ts
+  index.ts
 ```
 
-**Package structure:**
-- `packages/admin` — operator dashboard (~39 page folders)
-- `packages/vendor` — seller dashboard (~24 page folders)
-- `packages/dashboard-shared` — shared React primitives (forms, tables, modals, layout)
-- `packages/dashboard-sdk` — Vite plugin for file-based routing and block injection
-- `packages/client` — typed API client using recursive Proxy pattern
-- `packages/types` — shared TypeScript contracts
-
-**Key frontend patterns:**
-- File-based routing via `@mercurjs/dashboard-sdk` scanning `src/routes/**/page.tsx`
-- Compound component pattern: every page exports `Object.assign(Root, { Header, HeaderTitle, HeaderActions, DataTable, ... })`
-- TanStack Query for data fetching with `queryKeysFactory` for cache keys
-- `RouteFocusModal` for create flows, `RouteDrawer` for edit flows
-- `TabbedForm` for multi-step creation
-- Strict i18n via `useTranslation()` / `t(key)`
-- Only `@medusajs/ui` components allowed as UI library
-- Only `@medusajs/icons` for icons
-- Medusa UI color tokens only (no raw hex/rgb)
-
----
-
-## 3. How MercurJS Handles the Storefront
-
-MercurJS is **headless** — it does not prescribe a storefront. The Store API (`/store/*`) is a separate surface that any frontend can consume.
-
-### 3.1 Store API
-- Exposes marketplace discovery: sellers, offers, products
-- Multi-vendor cart that spans sellers
-- Cart completion triggers the split-order workflow
-- Seller-scoped product visibility based on `product-seller-link`
-
-### 3.2 Demo / Template Storefront
-MercurJS provides `templates/basic` which includes:
-- Next.js B2C marketplace storefront (optional during scaffolding)
-- Multi-vendor catalog browsing
-- Offer-based add-to-cart
-- Checkout that works across multiple sellers
-- Storefront cache revalidation on product/offer events
-
-### 3.3 Key Insight for Our Project
-We already have a Next.js storefront in `apps/storefront/`. We can either:
-1. Keep our existing DTC starter and extend it for marketplace browsing
-2. Replace/augment it with MercurJS’s storefront template patterns
-3. Build marketplace-specific pages alongside existing ones
-
----
-
-## 4. Official MedusaJS Marketplace Recipe
-
-Medusa’s official docs (`docs.medusajs.com/resources/recipes/marketplace`) prescribe:
-
-### 4.1 Custom Marketplace Module
-Create `src/modules/marketplace` with:
-- `Vendor` data model (handle, name, logo, etc.)
-- `VendorAdmin` data model (first_name, last_name, email, vendor relation)
-- Service extending `MedusaService` for CRUD
-- Module definition exported as `MARKETPLACE_MODULE`
-
-### 4.2 Module Links
-Define links between Vendor and Product/Order:
+**vendor.ts** — follows official recipe:
 ```ts
+import { model } from "@medusajs/framework/utils"
+import VendorAdmin from "./vendor-admin"
+
+const Vendor = model.define("vendor", {
+  id: model.id().primaryKey(),
+  handle: model.text().unique(),
+  name: model.text(),
+  logo: model.text().nullable(),
+  status: model.text().default("pending_approval"),
+  admins: model.hasMany(() => VendorAdmin, { mappedBy: "vendor" }),
+  metadata: model.json().nullable(),
+})
+
+export default Vendor
+```
+
+**vendor-admin.ts**:
+```ts
+import { model } from "@medusajs/framework/utils"
+import Vendor from "./vendor"
+
+const VendorAdmin = model.define("vendor_admin", {
+  id: model.id().primaryKey(),
+  first_name: model.text().nullable(),
+  last_name: model.text().nullable(),
+  email: model.text().unique(),
+  vendor: model.belongsTo(() => Vendor, { mappedBy: "admins" }),
+})
+
+export default VendorAdmin
+```
+
+**service.ts** — extend `MedusaService` for auto-generated CRUD:
+```ts
+import { MedusaService } from "@medusajs/framework/utils"
+import Vendor from "./models/vendor"
+import VendorAdmin from "./models/vendor-admin"
+
+export default class MarketplaceModuleService extends MedusaService({
+  Vendor,
+  VendorAdmin,
+}) {}
+```
+
+**index.ts**:
+```ts
+import { Module } from "@medusajs/framework/utils"
+import MarketplaceModuleService from "./service"
+
+export const MARKETPLACE_MODULE = "marketplace"
+
+export default Module(MARKETPLACE_MODULE, {
+  service: MarketplaceModuleService,
+})
+```
+
+**Register in `medusa-config.ts`**:
+```ts
+module.exports = defineConfig({
+  // ... existing config
+  modules: [
+    { resolve: "./src/modules/marketplace" },
+  ],
+})
+```
+
+**Generate migrations:**
+```bash
+pnpm exec medusa db:generate marketplace
+pnpm exec medusa db:migrate
+```
+
+### 3.3 Phase 2: Module Links
+
+Define links in `apps/backend/src/links/`:
+
+**vendor-product.ts** — allowlist which vendors may sell which products:
+```ts
+import { defineLink } from "@medusajs/framework/utils"
+import MarketplaceModule from "../modules/marketplace"
+import ProductModule from "@medusajs/medusa/product"
+
 export default defineLink(
   MarketplaceModule.linkable.vendor,
   { linkable: ProductModule.linkable.product.id, isList: true }
 )
 ```
 
-### 4.3 Workflow Hooks for Auto-Linking
-Use Medusa’s exposed hooks:
-- `createProductsWorkflow.hooks.productsCreated`
-- `createOrdersWorkflow.hooks.orderCreated`
+**vendor-order.ts** — associate orders with vendors:
+```ts
+import { defineLink } from "@medusajs/framework/utils"
+import MarketplaceModule from "../modules/marketplace"
+import OrderModule from "@medusajs/medusa/order"
 
-Hook into these to automatically link new products/orders to the logged-in vendor’s store.
-
-### 4.4 Middleware for Data Scoping
-Add middleware chain:
-1. `registerLoggedInUser` — resolves and caches the logged-in user
-2. `addStoreIdToFilterableFields` — reads user-store link, injects `store_id` into filterable fields
-3. `maybeApplyLinkFilter` — translates store_id into join filters against link tables
-4. `moveIdsToQueryFromFilterableFields` — moves filterable IDs into query params
-
-This ensures vendors only see their own products/orders without modifying core handlers.
-
-### 4.5 Order Splitting
-Replicate/override the cart completion workflow to split one cart into per-vendor orders. Medusa’s workflow engine supports compensation/rollback.
-
-### 4.6 Custom Actor Types
-Register a custom `vendor` actor type in auth so vendor admins authenticate separately from super admins.
-
----
-
-## 5. Local Project Context (`medusa-js`)
-
-### 5.1 Current State
-From `knowledgebase/context.md` and file inspection:
-- **Backend**: 100% upstream stock. No custom modules, workflows, links, or API routes beyond scaffolded placeholders.
-- **Storefront**: Next.js 15.5.21 with Next.js Starter DTC template. Has 9 local patches for bugs.
-- **Medusa Version**: 2.20.1
-- **Package Manager**: pnpm 11.22.0
-- **Node**: v24.18.0
-- **Database**: PostgreSQL 18.6, `medusa_swift_canyon`
-- **Structure**: Turborepo monorepo with `apps/backend` and `apps/storefront`
-
-### 5.2 Backend Extension Points Available
-```
-apps/backend/src/
-  modules/      — empty README, ready for custom modules
-  workflows/    — empty README, ready for workflows
-  links/        — empty README, ready for module links
-  api/
-    admin/custom/route.ts  — placeholder
-    store/custom/route.ts  — placeholder
-  subscribers/  — empty README
-  jobs/         — empty README
+export default defineLink(
+  MarketplaceModule.linkable.vendor,
+  { linkable: OrderModule.linkable.order.id, isList: true }
+)
 ```
 
-### 5.3 medusa-config.ts
-Current config is minimal — just `projectConfig` with database URL and CORS. No plugins, no custom modules registered. This is the perfect blank slate for adding marketplace functionality.
+**vendor-user.ts** — link vendor admins to Medusa users:
+```ts
+import { defineLink } from "@medusajs/framework/utils"
+import MarketplaceModule from "../modules/marketplace"
+import UserModule from "@medusajs/medusa/user"
 
----
-
-## 6. Recommended Implementation Approach
-
-### 6.1 Strategy: Native Medusa Implementation (Not MercurJS Fork)
-
-**Reasoning:**
-- MercurJS is a full marketplace platform with its own release cycle, version pinning (`@medusajs/framework` 2.20.1), and architectural assumptions
-- MercurJS 2.0+ uses a block-based model where code is copied into your project — but it’s designed for their CLI/tooling
-- Our existing `medusa-js` project has a working Next.js storefront and backend
-- Directly implementing the MedusaJS marketplace recipe gives us full control and avoids MercurJS upgrade coupling
-
-### 6.2 Phase 1: Foundation (Backend)
-
-**Step 1: Create Marketplace Module**
+export default defineLink(
+  MarketplaceModule.linkable.vendorAdmin,
+  { linkable: UserModule.linkable.user.id, isList: false }
+)
 ```
-apps/backend/src/modules/marketplace/
+
+Sync links:
+```bash
+pnpm exec medusa db:sync-links
+```
+
+### 3.4 Phase 3: Vendor Workflows
+
+Create workflows in `apps/backend/src/workflows/marketplace/`:
+
+**create-vendor/steps/create-vendor.ts** — create vendor record
+**create-vendor/steps/create-vendor-admin.ts** — create vendor admin
+**create-vendor/index.ts** — compose workflow using `createVendorStep`, `createVendorAdminStep`, `setAuthAppMetadataStep`, `useQueryGraphStep`
+
+Key pattern from official docs:
+```ts
+const createVendorWorkflow = createWorkflow(
+  "create-vendor",
+  function (input: CreateVendorWorkflowInput) {
+    const vendor = createVendorStep({ name: input.name, handle: input.handle })
+    const vendorAdmin = createVendorAdminStep({ ...input.admin, vendor_id: vendor.id })
+    setAuthAppMetadataStep({ authIdentityId: input.authIdentityId, actorType: "vendor", value: vendorAdmin.id })
+    const { data } = useQueryGraphStep({ entity: "vendor", fields: ["*", "admins.*"], filters: { id: vendor.id } })
+    return new WorkflowResponse({ vendor: data[0] })
+  }
+)
+```
+
+**approve-vendor/steps/approve-vendor.ts** — operator approves vendor
+**suspend-vendor/steps/suspend-vendor.ts** — operator suspends vendor
+
+### 3.5 Phase 4: Vendor API Routes
+
+Create `apps/backend/src/api/middlewares.ts`:
+```ts
+import { defineMiddlewares, authenticate, validateAndTransformBody } from "@medusajs/framework/http"
+import { PostVendorCreateSchema } from "./vendors/route"
+
+export default defineMiddlewares({
+  routes: [
+    {
+      matcher: "/vendors",
+      method: ["POST"],
+      middlewares: [
+        authenticate("vendor", ["session", "bearer"], { allowUnregistered: true }),
+        validateAndTransformBody(PostVendorCreateSchema),
+      ],
+    },
+    {
+      matcher: "/vendors/*",
+      middlewares: [authenticate("vendor", ["session", "bearer"])],
+    },
+  ],
+})
+```
+
+**vendors/route.ts** — create vendor (POST)
+**vendors/products/route.ts** — vendor-scoped product CRUD (GET, POST)
+**vendors/orders/route.ts** — vendor-scoped order listing (GET)
+
+Storefront/public routes:
+**store/sellers/route.ts** — public seller directory (GET)
+**store/sellers/[handle]/route.ts** — public seller storefront (GET)
+
+### 3.6 Phase 5: Order Splitting
+
+Extend cart completion to split orders by vendor. Workflow steps:
+1. `group-vendor-items.ts` — group cart line items by vendor using `query.graph()`
+2. `create-vendor-orders.ts` — create per-vendor child orders using `createOrderWorkflow`
+3. `link-orders-to-vendor.ts` — link child orders to vendor via `createRemoteLinkStep`
+4. Compensation: cancel created child orders on failure using `cancelOrderWorkflow`
+
+Reference: official Medusa marketplace recipe Step 8.
+
+### 3.7 Phase 6: Commission Module (Optional, Advanced)
+
+```
+apps/backend/src/modules/commission/
   models/
-    vendor.ts
-    vendor-admin.ts
-    store.ts
+    commission-rule.ts
   service.ts
   index.ts
 ```
 
-Data models:
-- `Store`: the vendor’s storefront entity (name, handle, description, status)
-- `VendorAdmin`: links a Medusa user to a store with a role
-- Optionally: `Seller` if we want separate from Medusa’s built-in Store concept
+- Rule-based rates matched across product, category, seller
+- Auto-calculate on order placement via subscriber or workflow hook
+- Use BigNumber for financial precision (see MercurJS pattern)
 
-**Step 2: Define Module Links**
-Create `apps/backend/src/links/`:
-- `store-product-link.ts` — link Store to Product
-- `store-order-link.ts` — link Store to Order
-- `store-customer-link.ts` — link Store to Customer
-- `store-user-link.ts` — link Store to User (for vendor admins)
-- `store-inventory-link.ts` — link Store to InventoryItem
-- `store-shipping-profile-link.ts` — link Store to ShippingProfile
+### 3.8 Phase 7: Admin Dashboard Extensions
 
-Run `pnpm exec medusa db:generate marketplace` and `pnpm exec medusa db:migrate`.
+Use Medusa’s admin extension points in `apps/backend/src/admin/`:
+- **Widgets** — marketplace overview cards
+- **UI Routes** — `/admin/stores`, `/admin/vendors`, `/admin/commissions`
+- **Settings** — marketplace configuration
 
-**Step 3: Create Vendor Workflow**
-- `create-store-workflow` — creates store + vendor admin + links user
-- `approve-store-workflow` — operator approves vendor
-- `suspend-store-workflow` — operator suspends vendor
+### 3.9 Phase 8: Vendor Dashboard
 
-**Step 4: Expose API Routes**
-```
-apps/backend/src/api/
-  admin/
-    stores/          — CRUD for marketplace operators
-    vendors/         — vendor management
-    marketplace/     — commission rules, payouts
-  vendor/
-    products/        — vendor-scoped product management
-    orders/          — vendor-scoped order management
-    store/           — vendor store settings
-  store/
-    sellers/         — public seller directory
-    sellers/[handle]/ — public seller storefront
-```
+Options:
+- **A**: Admin extensions with vendor-scoped views (quickest)
+- **B**: Separate Vite dashboard app (like MercurJS)
+- **C**: Seller pages in Next.js storefront under `/seller/*`
 
-**Step 5: Middleware for Scoping**
-Create `apps/backend/src/api/middlewares.ts`:
-- Vendor auth middleware for `/vendor/*` routes
-- Store-scoping middleware for vendor API routes
-- Operator bypass for `/admin/*` routes
-
-**Step 6: Order Splitting Workflow**
-Override or extend the cart completion workflow:
-1. Complete cart creates OrderGroup
-2. Group cart line items by store
-3. Create per-store orders
-4. Calculate commission lines per order
-5. Link orders to OrderGroup
-
-**Step 7: Commission Module**
-Create `apps/backend/src/modules/commission/`:
-- CommissionRule model (product, category, seller-specific rates)
-- CommissionCalculation workflow
-- Auto-calculate on order placement
-
-### 6.3 Phase 2: Admin Dashboard Extensions
-
-Use Medusa’s Admin UI extension points:
-- **Widgets**: Add marketplace overview widgets to the admin dashboard
-- **UI Routes**: Add `/admin/stores`, `/admin/vendors`, `/admin/commissions` pages
-- **Settings Pages**: Add marketplace configuration
-
-Example structure:
-```
-apps/backend/src/admin/
-  widgets/
-    marketplace-stats.tsx
-  pages/
-    stores/
-      store-list.tsx
-      store-detail.tsx
-    vendors/
-      vendor-list.tsx
-    commissions/
-      commission-rates.tsx
-```
-
-### 6.4 Phase 3: Vendor Dashboard
-
-Build a separate vendor dashboard (similar to MercurJS’s `packages/vendor`):
-- Option A: Extend Medusa Admin with vendor-scoped customizations
-- Option B: Build a separate React/Vite app (like MercurJS)
-- Option C: Add vendor pages within the existing storefront under `/seller/*`
-
-**Recommended for our setup:** Start with Option A (admin extensions) for MVP, then evolve to Option C or B as needs grow.
-
-### 6.5 Phase 4: Storefront Marketplace Features
-
-Extend the existing Next.js storefront:
-- Seller directory page (`/sellers`)
-- Seller storefront pages (`/sellers/[handle]`)
-- Multi-vendor cart with seller grouping
-- Offer-based product pages
-- Seller badges on product pages
-
-### 6.6 Phase 5: Payouts & Payments
-
-- Integrate Stripe Connect (or alternative) for vendor payouts
-- Create payout workflow
-- Add payout tracking to vendor dashboard
-- Scheduled job for payout processing
+Recommended: start with **A**, evolve to **C** as needs grow.
 
 ---
 
-## 7. Key Implementation Files to Create
+## 4. Critical Implementation Rules
+
+### 4.1 Medusa Conventions (from `building-with-medusa` skill)
+- **Workflows required for ALL mutations** — never call module services directly from routes
+- **Only GET, POST, DELETE** — never PUT/PATCH
+- **Module isolation** — use links, not direct cross-module service calls
+- **Query patterns**:
+  - `query.graph()` for cross-module retrieval
+  - `query.index()` for filtering across linked modules
+- **Prices stored as-is** — 49.99 is stored as 49.99, not cents
+- **Module names camelCase** — never dashes
+- **Zod from `@medusajs/framework/zod`** — use v4 API (`z.email()`, `z.strictObject()`, etc.)
+
+### 4.2 Upgrade Safety
+- Use **modules** for custom data models
+- Use **module links** instead of foreign keys
+- Use **workflow hooks** instead of modifying core workflows
+- Use **middleware** for request scoping
+- Avoid forking or patching Medusa core
+
+---
+
+## 5. File Structure to Create
 
 ### Backend
 ```
 apps/backend/src/modules/marketplace/
   models/vendor.ts
-  models/store.ts
   models/vendor-admin.ts
   service.ts
   index.ts
 
-apps/backend/src/modules/commission/
-  models/commission-rule.ts
-  service.ts
-  index.ts
-
 apps/backend/src/links/
-  store-product-link.ts
-  store-order-link.ts
-  store-customer-link.ts
-  store-user-link.ts
-  store-inventory-item-link.ts
-  store-shipping-profile-link.ts
+  vendor-product.ts
+  vendor-order.ts
+  vendor-user.ts
 
 apps/backend/src/workflows/marketplace/
-  create-store/
-    steps/create-store.ts
+  create-vendor/
+    steps/create-vendor.ts
     steps/create-vendor-admin.ts
     index.ts
-  approve-store/
-    steps/approve-store.ts
+  approve-vendor/
+    steps/approve-vendor.ts
     index.ts
   split-order/
-    steps/group-items-by-store.ts
-    steps/create-store-orders.ts
-    steps/calculate-commissions.ts
+    steps/group-vendor-items.ts
+    steps/create-vendor-orders.ts
     index.ts
 
 apps/backend/src/api/
   middlewares.ts
-  admin/stores/route.ts
-  admin/stores/[id]/route.ts
-  vendor/products/route.ts
-  vendor/orders/route.ts
+  vendors/route.ts
+  vendors/products/route.ts
+  vendors/orders/route.ts
   store/sellers/route.ts
   store/sellers/[handle]/route.ts
 
-apps/backend/src/subscribers/
-  marketplace/
-    order-completed.ts
-    payout-requested.ts
+apps/backend/src/subscribers/marketplace/
+  order-completed.ts
 ```
 
 ### Frontend
@@ -404,115 +347,215 @@ apps/storefront/src/modules/seller/
 
 ---
 
-## 8. Plugin Alternative: `@techlabi/medusa-marketplace-plugin`
+## 6. Alternative: `@techlabi/medusa-marketplace-plugin`
 
-### 8.1 What It Provides
-- Super admin role with vendor impersonation
-- Store creation workflow
-- Entity separation via module links (customer-store, order-store, price-list-store, product-store, shipping-profile-store, stock-location-store, user-store)
-- Admin dashboard widgets
-- Vendor-specific product/order scoping in admin
+### 6.1 What It Is
+A community Medusa plugin that transforms a standard Medusa store into a multivendor marketplace. It is published on npm as `@techlabi/medusa-marketplace-plugin` (v0.65.0, Apache 2.0, ~803 monthly downloads). The plugin is backed by a 4-part Medium series and a demo app at `https://github.com/Tech-Labi/medusa2-marketplace-demo`.
 
-### 8.2 Limitations
-- Community plugin (~63 stars), smaller maintainer team
-- Requires `postinstall` patch script that modifies admin internals
-- Tightly coupled to Medusa’s internal admin structure — may break on minor Medusa upgrades
-- No built-in payouts, commissions, or order splitting
-- No vendor dashboard — vendors use scoped admin views
-- Less flexible than MercurJS for complex marketplace logic
+### 6.2 How It Is Built
+The plugin follows Medusa’s extension architecture:
+- **Module links** are the primary separation mechanism. It defines links for `customer-store`, `order-store`, `price-list-store`, `product-store`, `shipping-profile-store`, `stock-location-store`, and `user-store`.
+- **Super admin role** is introduced to manage the marketplace and impersonate vendor accounts.
+- **Store creation workflow** lets operators create vendor stores, each with isolated entities (customers, orders, products, price lists, shipping profiles, stock locations, user accounts).
+- **Admin patch**: the plugin requires a `postinstall` script (`patch-admin.js`) that modifies Medusa admin internals. This is injected into `package.json` and runs after `yarn install` / `pnpm install`.
 
-### 8.3 When to Use
-- Prototyping/MVP where speed matters more than long-term control
-- Simple marketplace with basic vendor separation needs
-- When you want to avoid building the full multivendor stack yourself
+### 6.3 How to Install
+
+```bash
+# 1. Install plugin
+yarn add @techlabi/medusa-marketplace-plugin
+# or with pnpm:
+pnpm add @techlabi/medusa-marketplace-plugin
+```
+
+Add to root `package.json`:
+```json
+{
+  "scripts": {
+    "postinstall": "node node_modules/@techlabi/medusa-marketplace-plugin/.medusa/server/src/patch-admin.js"
+  }
+}
+```
+
+Add env vars to `apps/backend/.env`:
+```env
+API_KEY=supersecret
+VITE_BACKEND_URL=http://localhost:9000
+ALLOW_API_KEYS_FOR_VENDORS=true
+```
+
+Register in `apps/backend/medusa-config.ts`:
+```ts
+module.exports = defineConfig({
+  projectConfig: { /* existing config */ },
+  plugins: [
+    {
+      resolve: "@techlabi/medusa-marketplace-plugin",
+      options: {},
+    },
+  ],
+  admin: {
+    vite: (config) => {
+      config.define["__VITE_DISABLE_SIGNUP_WIDGET__"] = JSON.stringify(true)
+    },
+  },
+})
+```
+
+Run migrations:
+```bash
+pnpm exec medusa db:migrate
+```
+
+Create super admin:
+```bash
+curl -X POST http://localhost:9000/stores/super \
+  -d '{ "email":"admin@test.com", "password": "supersecret"}' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: supersecret'
+```
+
+### 6.4 How It Works (Architecture)
+
+The plugin does **not** replace Medusa core. Instead, it uses Medusa’s public extension points:
+
+| Concern | Implementation |
+|---------|---------------|
+| Vendor identity | Module links between `store` and core entities |
+| Data isolation | Each vendor gets a Medusa `Store`; links scope customers, orders, products, inventory, shipping |
+| Admin experience | Postinstall patch injects custom admin UI/routes |
+| Vendor auth | Custom actor type / admin impersonation |
+| Order separation | Orders are linked to stores via `order-store` link |
+
+This means:
+- **Upgrade risk is moderate**: the `postinstall` patch touches admin internals and may break on Medusa minor upgrades. The plugin author has been maintaining it across Medusa 2.x releases.
+- **Limited marketplace logic**: there is no built-in commission engine, payout automation, or offer/master-product model. It provides store separation, not a full marketplace transaction layer.
+- **Admin coupling**: the plugin relies on patching admin internals, which is necessary for its custom admin UI but is inherently fragile compared to official extension points.
+
+### 6.5 When to Use This Plugin
+
+**Good fit:**
+- Rapid prototyping or MVP where you need vendor separation quickly
+- You are comfortable with community-maintained code and occasional upgrade fixes
+- You don’t need advanced marketplace features like commissions, payouts, or offer-based listings
+
+**Not recommended if:**
+- You need full marketplace transaction logic (commissions, payouts, order splitting by seller)
+- You want zero coupling to Medusa admin internals
+- You are building a production marketplace that must survive Medusa major/minor upgrades without manual patch updates
+
+### 6.6 Comparison: Plugin vs Native Implementation
+
+| Aspect | Plugin (`@techlabi`) | Native Implementation |
+|--------|----------------------|----------------------|
+| **Setup speed** | Fast — install + patch + migrate | Slower — build modules, links, workflows, routes |
+| **Upgrade safety** | Moderate — admin patch may break | High — uses only public Medusa APIs |
+| **Marketplace depth** | Store separation + super admin + impersonation | Full control: offers, commissions, payouts, order splitting |
+| **Maintenance** | Follow plugin releases | You own the code |
+| **Admin UI** | Provided via patch | Build with `@medusajs/admin-sdk` |
+| **Vendor UX** | Basic store management | Customizable to any depth |
+| **Commissions/Payouts** | Not included | Build as needed |
+
+### 6.7 Architectural Assessment
+
+The plugin is **more aligned with Medusa architecture than a custom Express backend** because:
+- It uses **module links** rather than foreign keys or separate schemas
+- It registers itself via `plugins` in `medusa-config.ts`
+- It relies on Medusa’s built-in commerce modules (product, order, customer, inventory, shipping)
+- It does not replace the backend with a custom server
+
+However, it is **less aligned than a native custom module implementation** because:
+- It requires a **postinstall patch** to Medusa admin internals
+- It does not expose a workflow-first mutation pattern for marketplace operations
+- It lacks the compensation/rollback patterns that Medusa workflows provide
+- It does not implement the offer/master-product model that MercurJS uses for true multivendor listings
+
+### 6.8 Recommended Path
+
+For this project:
+1. **If speed matters most**: install `@techlabi/medusa-marketplace-plugin` to get vendor separation immediately, then iterate.
+2. **If long-term control matters**: build the native implementation described in Sections 3.1–3.9 of this document. It takes longer but avoids patch fragility and gives full control over commissions, payouts, and order splitting.
+
+You can also **start with the plugin and migrate to native later**:
+- Use the plugin’s store/link structure as a reference
+- Keep your storefront abstraction clean so vendor-scoped data can be swapped from plugin links to native links
+- Reuse the same admin/storefront UI patterns
 
 ---
 
-## 9. Marketing & Advertising Integrations
-
-### 9.1 Current Landscape
-There is **no dedicated Google Ads plugin** for MedusaJS. The existing community marketing plugins cover:
-
-| Plugin | Purpose | Status |
-|--------|---------|--------|
-| `@variablevic/google-analytics-medusa` | GA4 ecommerce tracking via Measurement Protocol | Active |
-| `medentem/klaviyo-medusa` | Klaviyo email marketing + customer sync | Active |
-| `@tsc_tech/medusa-plugin-product-seo` | Product/category SEO metadata | Active |
-| `erickirt/medusa-marketing` | Action-based email framework | v1 only, needs migration |
-
-### 9.2 Google Ads Integration Options
-
-**Option A: Build Custom Subscriber/Workflow**
-- Use Medusa’s event system to push conversion events to Google Ads API
-- Subscribe to `order.placed`, `cart.updated`, `product.viewed`
-- Fan out to multiple ad platforms via parallelized workflow steps
-- Example pattern from docs:
-  ```ts
-  export const addSubscriberToAudiencesWorkflow = createWorkflow(...)
-  ```
-- Pros: Full control, works with any ad platform
-- Cons: Requires development effort
-
-**Option B: Frontend Pixel Injection**
-- Add Google Ads/GTM scripts to storefront
-- Use client-side event tracking
-- Simplest but most fragile
-- Good for MVP, insufficient for proper conversion tracking
-
-**Option C: GTM DataLayer Bridge**
-- Feature request exists for `@medusajs/gtm-datalayer` package
-- Would map Medusa events to GA4 dataLayer events
-- Then GTM routes to GA4, Meta Pixel, Google Ads, TikTok, etc.
-- Not yet implemented — opportunity to build
-
-### 9.3 Recommended Approach
-Build a small internal Medusa plugin (`apps/backend/src/plugins/marketing/`) that:
-1. Subscribes to key commerce events
-2. Transforms Medusa data to ad-platform formats
-3. Pushes to Google Ads Conversions API, Meta Conversions API, etc.
-4. Uses Medusa’s workflow engine for retry/compensation
-
-This keeps the integration maintainable and platform-agnostic.
-
----
-
-## 10. Architecture Comparison: Our Project vs MercurJS
+## 7. Comparison: Our Project vs MercurJS
 
 | Aspect | Our `medusa-js` | MercurJS |
 |--------|-----------------|----------|
-| **Backend** | Single Medusa app, stock | Medusa + `@mercurjs/core` plugin |
-| **Multi-vendor** | None (DTC only) | Full marketplace layer |
-| **Modules** | None custom | 10+ marketplace modules |
-| **Links** | None | 35+ module links |
-| **Admin** | Standard Medusa Admin | `@mercurjs/admin` (39 pages) |
-| **Vendor Panel** | None | `@mercurjs/vendor` (24 pages) |
-| **Storefront** | Next.js DTC starter | Headless, any frontend |
-| **Payouts** | None | Stripe Connect built-in |
-| **Commissions** | None | Rule-based, BigNumber precision |
-| **Order Splitting** | None | OrderGroup + per-seller orders |
-| **Product Model** | Single-seller | Master product + Offer model |
-| **Auth** | Admin + Customer | Admin + Vendor + Customer |
-| **Package Manager** | pnpm | Bun |
-| **Frontend Stack** | Next.js + Tailwind | React + Vite + Medusa UI |
+| Backend | Single Medusa app | Medusa + `@mercurjs/core` plugin |
+| Multi-vendor | None | Full marketplace layer |
+| Modules | None custom | 10+ marketplace modules |
+| Links | None | 35+ module links |
+| Admin | Standard Medusa Admin | `@mercurjs/admin` (39 pages) |
+| Vendor Panel | None | `@mercurjs/vendor` (24 pages) |
+| Order Splitting | None | OrderGroup + per-seller orders |
+| Product Model | Single-seller | Master product + Offer model |
+| Auth | Admin + Customer | Admin + Vendor + Customer |
+| Package Manager | pnpm | Bun |
+| Frontend Stack | Next.js + Tailwind | React + Vite + Medusa UI |
 
 ---
 
-## 11. Upgrade & Maintenance Considerations
+## 8. Implementation Checklist
 
-### 11.1 Staying on Medusa Core
+### 8.1 Native Implementation
+- [ ] Create `apps/backend/src/modules/marketplace/` with `Vendor` + `VendorAdmin` models
+- [ ] Register module in `medusa-config.ts`
+- [ ] Generate and run migrations
+- [ ] Define `vendor-product`, `vendor-order`, `vendor-user` links
+- [ ] Sync links to database
+- [ ] Create `create-vendor` workflow with compensation
+- [ ] Create `approve-vendor` and `suspend-vendor` workflows
+- [ ] Add `/vendors` API route with `authenticate("vendor")` middleware
+- [ ] Add `/vendors/products` and `/vendors/orders` routes
+- [ ] Add `/store/sellers` public directory route
+- [ ] Implement order splitting workflow (`group-vendor-items` → `create-vendor-orders`)
+- [ ] Add commission module (optional)
+- [ ] Add admin widgets/pages for marketplace management
+- [ ] Extend storefront with seller directory and storefront pages
+- [ ] Add payout integration (Stripe Connect) if needed
+
+### 8.2 Plugin Implementation
+- [ ] Install `@techlabi/medusa-marketplace-plugin`
+- [ ] Add `postinstall` patch script to root `package.json`
+- [ ] Add `API_KEY` and `VITE_BACKEND_URL` to `.env`
+- [ ] Register plugin in `medusa-config.ts`
+- [ ] Run `pnpm exec medusa db:migrate`
+- [ ] Create super admin via `/stores/super`
+- [ ] Test store creation and entity separation
+- [ ] Verify admin impersonation works
+- [ ] Evaluate need for custom marketplace extensions
+
+---
+
+## 9. Upgrade & Maintenance Considerations
+
+### 9.1 Native Implementation
 - Use **modules** for custom data models — isolated, upgrade-safe
 - Use **module links** instead of foreign keys — schemas stay stable
 - Use **workflow hooks** instead of modifying core workflows
 - Use **middleware** for request scoping instead of modifying handlers
 - Avoid forking or patching Medusa core packages
 
-### 11.2 Medusa Version Tracking
-- Current: 2.20.1
-- MercurJS tracks closely: v2.3.1 bumped Medusa from 2.17.2 → 2.18.0
-- Medusa releases ~monthly minor versions with breaking changes
-- Our custom code should target Medusa’s public APIs, not internals
+### 9.2 Plugin Implementation
+- The plugin requires a **postinstall patch** that modifies Medusa admin internals
+- Monitor plugin releases for Medusa version compatibility
+- Test thoroughly when upgrading Medusa minor versions
+- Keep a backup of `medusa-config.ts` and custom admin overrides
+- Consider contributing fixes back to the plugin repo
 
-### 11.3 Migration Path if Switching to MercurJS Later
+### 9.3 Medusa Version Tracking
+- Current: 2.20.1
+- Plugin tracks Medusa 2.x closely
+- Medusa releases ~monthly minor versions with breaking changes
+- Custom code should target Medusa’s public APIs, not internals
+
+### 9.4 Migration Path if Switching to MercurJS Later
 If we outgrow our custom implementation:
 1. Export our marketplace data model
 2. Create a fresh `bun create mercur-app@latest`
@@ -522,32 +565,36 @@ If we outgrow our custom implementation:
 
 ---
 
-## 12. Recommended Next Steps
+## 10. Recommended Next Steps
 
 1. **Validate requirements** — confirm multivendor scope (simple vendor separation vs full marketplace with commissions/payouts)
-2. **Create marketplace module** — start with `Store` + `VendorAdmin` models and basic CRUD
-3. **Define core links** — store-product, store-order, store-user
-4. **Build vendor onboarding workflow** — create store, invite admin, set auth metadata
-5. **Add vendor API routes** — scoped product/order management
-6. **Implement order splitting** — extend cart completion for multi-vendor carts
-7. **Add admin marketplace pages** — vendor management, commission rules
-8. **Extend storefront** — seller directory, multi-vendor cart
-9. **Add marketing integrations** — GA4, email, eventually Google Ads
+2. **Choose implementation path** — plugin for speed, native for control, or hybrid
+3. **If plugin**: install `@techlabi/medusa-marketplace-plugin`, apply patch, run migrations, test store creation
+4. **If native**: create marketplace module with `Vendor` + `VendorAdmin` models
+5. **Define core links** — vendor-product, vendor-order, vendor-user
+6. **Build vendor onboarding workflow** — create store, invite admin, set auth metadata
+7. **Add vendor API routes** — scoped product/order management
+8. **Implement order splitting** — extend cart completion for multi-vendor carts
+9. **Add admin marketplace pages** — vendor management, commission rules
+10. **Extend storefront** — seller directory, multi-vendor cart
 
 ---
 
-## 13. Sources
+## 11. Sources
 
 - MedusaJS Marketplace Recipe: https://docs.medusajs.com/resources/recipes/marketplace/examples/vendors
 - MercurJS Architecture Doc: https://github.com/mercurjs/mercur/blob/main/docs/ARCHITECTURE.md
 - MercurJS UI Architecture: https://github.com/mercurjs/mercur/blob/main/docs/UI-ARCHITECTURE.md
 - MercurJS Product Description: https://github.com/mercurjs/mercur/blob/main/docs/PRODUCT.md
 - MercurJS Links: https://github.com/mercurjs/mercur/tree/main/packages/core/src/links
+- `@techlabi/medusa-marketplace-plugin` npm: https://www.npmjs.com/package/@techlabi/medusa-marketplace-plugin
+- `@techlabi/medusa-marketplace-plugin` GitHub: https://github.com/Tech-Labi/medusa-marketplace-plugin
+- Plugin demo app: https://github.com/Tech-Labi/medusa2-marketplace-demo
 - Local project knowledgebase: `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js\knowledgebase\context.md`
 - MedusaJS marketing plugin landscape: npm, GitHub searches
 - Community marketplace plugin: https://github.com/Tech-Labi/medusa-marketplace-plugin
 
 ---
 
-*Research compiled: 2026-09-07*
-*Based on MedusaJS v2.20.1, MercurJS v2.3.1, and local project inspection*
+*Research compiled: 2026-09-08*
+*Based on MedusaJS v2.20.1, MercurJS v2.3.1, @techlabi/medusa-marketplace-plugin v0.65.0, and local project inspection*
