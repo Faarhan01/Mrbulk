@@ -2,260 +2,371 @@
 
 ## Objective
 
-Adapt the reference frontend's header/navigation patterns to the MedusaJS storefront's existing `Nav` component in `src/modules/layout/templates/nav/`. The goal is to align the header's styling, spacing, and interaction patterns with the reference design, while preserving Medusa's data-fetching architecture and avoiding any backend changes.
+Style and refine the existing MedusaJS header (`src/modules/layout/templates/nav/index.tsx`) and its child components to match the visual quality of the reference frontend, **without adding new features, duplicating existing functionality, or breaking Medusa's architecture**.
 
-This plan is storefront-only. Backend remains untouched.
+The reference header (`ref/modern/Nextjsfrontend`) was researched thoroughly. It contains a cart **drawer**, search **megamenu overlay**, desktop **nav links with hover dropdowns**, and a full-screen mobile **drawer**. Our Medusa header uses a cart **dropdown**, a Popover-based mobile **SideMenu**, and has no search or desktop nav links. We will adapt the reference visual patterns into Medusa's existing structure using our global style system and Medusa UI tokens.
 
 ---
 
-## Current State Analysis
+## Key Principles
 
-### MedusaJS Header (`src/modules/layout/templates/nav/index.tsx`)
+1. **Designs and global styling first.** Before touching any component logic or adding features, apply global classes, tokens, and layout improvements to what already exists.
+2. **Static/visual adaptations second.** Reference patterns that can be implemented purely with styling or existing Medusa components (no new files, no new data fetching) come next.
+3. **New features third.** Anything requiring new components, new pages, or new data fetching only happens after the above are complete.
+4. **No duplicates.** If Medusa already has a feature, we refine it — we do not create a second implementation.
+5. **Respect Medusa architecture.** Keep server components server-side. Keep client components client-side. Do not add new npm packages.
+6. **Adapt, don't copy.** The reference is a different stack. We take the visual pattern and implement it with Medusa's components and data layer.
 
-- **Type**: Async server component by default
-- **Data fetching**: `Promise.all` with `listRegions()`, `listLocales()`, `getLocale()`
-- **Renders**: Sticky header with `SideMenu`, brand `LocalizedClientLink`, `Account` link, and a `Suspense` boundary around `CartButton`
-- **Child components**:
-  - `CartButton` — async SSR server component that calls `retrieveCart().catch(() => null)` and renders `<CartDropdown cart={cart} />`
-  - `SideMenu` — client component (`"use client"`) using `@headlessui/react` `Popover`; renders `Home`/`Store`/`Account`/`Cart` links plus `LanguageSelect` and `CountrySelect`
+---
 
-### Reference Header Patterns
+## Reference Header Research Summary
 
-The reference frontend uses:
-- Sticky header with subtle bottom border/shadow
-- Logo/brand on the left, navigation links in the center or right
-- Search icon, account icon, cart icon as action buttons
-- Theme-driven active states for navigation items
-- Responsive: collapses to a hamburger menu on mobile
-- Dark mode support via `dark:` variants
+### Reference Architecture
 
-### Gap Analysis
+The reference header is a single client component (`StoreHeader`) with multiple child components:
 
-| Need | MedusaJS Current State | Gap |
+| Component | Type | Purpose |
 |---|---|---|
-| Sticky header with shadow/border | `Nav` is sticky but uses minimal styling | Need to align shadow/border with reference |
-| Logo/brand link | `LocalizedClientLink` to home | Need to confirm styling matches reference |
-| Navigation links | `SideMenu` renders basic links | Need to enhance with theme-driven active states |
-| Search icon/action | Not present in header | **Ignored** — search is handled elsewhere |
-| Cart dropdown | `CartDropdown` exists with 5s auto-open | Styling needs alignment |
-| Mobile hamburger | `SideMenu` uses `Popover` with backdrop | Need to verify mobile behavior |
-| Theme-driven active states | None — static link styling | Need to add based on current route |
-| Dark mode | `darkMode: "class"` configured | Header needs `dark:` variants |
+| `StoreHeader` | Client (`'use client'`) | Main header orchestrator, manages scroll state, search state, mobile menu state |
+| `DesktopNavLinks` | Client | Desktop navigation: Home, Shop, Categories dropdown, Company dropdown, User menu dropdown, Seller Hub, Admin |
+| `HeaderSearch` | Client | Desktop search input with autocomplete |
+| `HeaderActions` | Client | Right-side actions: theme toggle, account icon, wishlist icon, cart icon, mobile search toggle, mobile menu toggle |
+| `MobileNavDrawer` | Client | Full-screen mobile drawer with accordions for Categories, Company, Account/Orders, Wishlist, Track Order, Seller Hub, Admin |
+| `CategoriesDropdown` | Client | Hover-based dropdown with category images, subcategories, item counts |
+| `CompanyDropdown` | Client | Hover-based dropdown with About, Contact, FAQ |
+| `UserMenuDropdown` | Client | Hover/click dropdown with Account, Order Tracking, Wishlist, Cart trigger, Seller Portal |
+| `SearchMegamenuOverlay` | Client | Full-width overlay with popular search tags, search results grid, quick add to cart |
+| `CartButton` | Client | Icon button that opens a cart **drawer** (not dropdown) |
+
+### Reference Patterns We Can Adapt Without Adding Features
+
+| Pattern | Reference Implementation | Medusa Adaptation | Requires New Feature? |
+|---|---|---|---|
+| Icon-style account button | `User` icon in rounded-full button with active state | Convert Account text link to icon button using `@medusajs/icons` | No — uses existing link |
+| Cart badge styling | Icon + count badge with theme color | Style `CartDropdown` trigger with `.btn.btn-icon` + `.badge` | No — existing cart |
+| Active state styling | `isActive(path)` with theme colors | `usePathname()` in `CartDropdown`/`SideMenu` | No — client components already exist |
+| Hover/focus micro-interactions | `hover:scale-105 active:scale-95`, `focus-visible:ring-2` | Add transition utilities via global classes | No — pure CSS |
+| Brand prominence | Logo text + icon, `text-lg font-extrabold` | Style existing `LocalizedClientLink` with global classes | No — existing brand link |
+| Mobile hamburger | Icon button, `lg:hidden` | `SideMenu` already does this — enhance styling | No — existing SideMenu |
+| Cart drawer → dropdown | Reference uses `cartOpen` state + drawer panel | Our `CartDropdown` is a Popover — style it to match reference visual quality | No — different mechanism, same visual goal |
+
+### Reference Features That Are Out of Scope
+
+| Feature | Why Out of Scope |
+|---|---|
+| **Cart drawer** | Reference uses a drawer (slides from right). Medusa uses a Popover dropdown. Converting to a drawer requires new component structure and state management. Out of scope unless explicitly requested. |
+| **Search megamenu overlay** | Reference has a full search overlay with popular tags, results grid, and quick add to cart. Medusa handles search on `/store` via `RefinementList`. Adding header search requires a new modal/page or integration with existing search params. Create a separate plan if needed. |
+| **Desktop nav links** | Reference has Home, Shop, Categories dropdown, Company dropdown, User menu dropdown, Seller Hub, Admin. Medusa's header has none of these. Adding desktop nav requires new components and routing. Out of scope unless explicitly requested. |
+| **Wishlist button** | No Medusa module for wishlists. Would require backend changes. |
+| **Theme toggle** | No dark mode toggle in the storefront. `darkMode: "class"` is configured but not exposed to users. |
+| **User avatar** | Reference shows user avatars in the header. Medusa does not fetch avatar URLs in the current customer schema. |
+| **Lucide icons** | Reference uses `lucide-react`. Medusa uses `@medusajs/icons` and inline SVGs. Do not add new icon libraries. |
+| **Mobile full-screen drawer** | Reference has a full-screen mobile drawer with accordions for Categories, Company, User menu. Medusa uses a Popover-based `SideMenu`. Converting to a drawer requires new component structure. Out of scope unless explicitly requested. |
 
 ---
 
-## Strategic Approach
+## Stage 1 — Global and Design Foundation (Styling Only)
 
-**Do NOT replace the header with a copy of the reference.** Instead:
+**Goal:** Apply global styling to the existing header structure. No new buttons, no new links, no new data fetching, no component creation. This is purely a styling pass using `globals.css` utilities and Medusa preset tokens.
 
-1. **Enhance the existing `Nav` template** — Add styling and structure to match the reference's visual hierarchy.
-2. **Use Medusa's existing data flow** — Keep the `Promise.all` data fetching pattern. Do not add new server actions for header data.
-3. **Theme tokens only** — Use `@medusajs/ui-preset` tokens and the new `theme.*` scale from Plan 01. Do not add new design tokens.
-4. **Preserve `SideMenu` behavior** — The `Popover`-based mobile menu works well. Enhance its styling, don't replace it.
-5. **Route-aware active states** — Use `usePathname()` from `next/navigation` to highlight the active nav item. Do not add new routing logic.
+### 1.1 Header Container
 
----
+**File:** `apps/storefront/src/modules/layout/templates/nav/index.tsx`
 
-## Step 1 — Header Container Styling
+Apply the `.navbar-surface` global class to the `<header>` element. This gives us:
+- `background: var(--bg-base)` / `border-color: var(--border-base)` / `color: var(--fg-base)`
+- Automatic dark mode switching via `.dark` on `<html>`
 
-### 1.1 Update `Nav` template classes
+Also add subtle elevation:
+- `shadow-elevation-card-rest` for default state
 
-**File**: `apps/storefront/src/modules/layout/templates/nav/index.tsx`
-
-Add/replace the root element classes to match the reference's sticky header pattern:
-- Sticky positioning (`sticky top-0 z-50`)
-- Background (`bg-ui-bg-base` or `bg-white`)
-- Border (`border-b border-ui-border-base`)
-- Shadow (`shadow-elevation-card-rest` or `shadow-sm`)
-- Backdrop blur for modern feel (`backdrop-blur-xs`)
-
-**Why**: The reference uses a subtle sticky header with a bottom border and shadow. Medusa's current header is functional but visually flat.
-
-### 1.2 Add dark mode variants
-
-Ensure all header classes include `dark:` variants:
-- `bg-white dark:bg-ui-bg-base`
-- `border-gray-200 dark:border-ui-border-base`
-- `text-ui-fg-base dark:text-ui-fg-base`
-
-**Why**: The reference supports dark mode. Medusa already has `darkMode: "class"` configured.
-
----
-
-## Step 2 — Brand/Logo Link
-
-### 2.1 Style the brand link
-
-**File**: `apps/storefront/src/modules/layout/templates/nav/index.tsx`
-
-The brand is currently a `LocalizedClientLink` to `/`. Enhance it with:
-- Larger font size (`text-xl-semi` or `text-2xl-semi`)
-- Font weight (`font-semibold`)
-- Theme color accent (`text-theme-blue-600 dark:text-theme-blue-400`)
-
-**Why**: The reference uses a prominent brand mark. Medusa's current brand link is minimal.
-
-### 2.2 Add logo text or icon
-
-If the store has a logo text or icon, add it here. For now, use the store name from `sdk.store.retrieve()` or a static string.
-
-**Why**: The reference uses "Mrbulk" as the logo text. Medusa can pull the store name from the backend or use a static default.
-
----
-
-## Step 3 — Navigation Links
-
-### 3.1 Desktop navigation
-
-**File**: `apps/storefront/src/modules/layout/templates/nav/index.tsx`
-
-Add a desktop nav row between the brand and the cart/account actions:
-- Links: `Home`, `Store`, `Categories`, `About` (if exists)
-- Active state based on current pathname
-- Hover/focus styles using Medusa tokens
-
-**Why**: The reference has explicit nav links. Medusa's current header only has the brand, account link, and cart.
-
-### 3.2 Active state logic
-
-Use `usePathname()` to determine the active link:
+**Current:**
 ```tsx
-"use client"
-import { usePathname } from "next/navigation"
-
-const pathname = usePathname()
-const isActive = (href: string) => pathname === href || pathname.startsWith(href)
+<header className="relative h-16 mx-auto border-b duration-200 bg-white border-ui-border-base">
 ```
 
-Apply `text-theme-blue-600 font-semibold` for active, `text-ui-fg-subtle` for inactive.
+**Target:**
+```tsx
+<header className="navbar-surface relative h-16 mx-auto border-b duration-200 shadow-elevation-card-rest">
+```
 
-**Why**: The reference highlights the active page in the nav. This is a common pattern that improves UX.
+### 1.2 Brand Link
 
-### 3.3 Keep SideMenu for mobile
+**File:** `apps/storefront/src/modules/layout/templates/nav/index.tsx`
 
-Do not replace `SideMenu`. Ensure the desktop nav is hidden on mobile (`hidden small:flex`) and the `SideMenu` hamburger is shown (`flex small:hidden`).
+Style the `LocalizedClientLink` to match the reference's brand prominence:
+- Use `text-xl-semi` for size/weight
+- Add `hover:text-ui-fg-base` for interaction
+- Keep `uppercase` if desired for brand consistency
 
-**Why**: The existing `SideMenu` already handles mobile navigation correctly with `@headlessui/react` `Popover`.
+**Current:**
+```tsx
+<LocalizedClientLink
+  href="/"
+  className="txt-compact-xlarge-plus hover:text-ui-fg-base uppercase"
+  data-testid="nav-store-link"
+>
+```
 
----
+**Target:**
+```tsx
+<LocalizedClientLink
+  href="/"
+  className="text-xl-semi hover:text-ui-fg-base uppercase tracking-tight"
+  data-testid="nav-store-link"
+>
+```
 
-## Step 4 — Header Actions (Cart, Account, Search)
+### 1.3 Cart Button Styling
 
-### 4.1 Cart button
+**File:** `apps/storefront/src/modules/layout/components/cart-button/index.tsx`
 
-**File**: `apps/storefront/src/modules/layout/components/cart-button/index.tsx`
+The `CartButton` is a server component that renders `CartDropdown`. The dropdown trigger already shows the cart count. We enhance the trigger styling:
+- Apply `.btn.btn-icon` classes to the trigger button inside `CartDropdown`
+- Ensure the count badge uses `.badge` global classes
 
-The `CartButton` already exists and renders `CartDropdown`. Enhance the button styling:
-- Icon + count badge
-- Theme accent for the badge
-- `dark:` variants
+**File:** `apps/storefront/src/modules/layout/components/cart-dropdown/index.tsx`
 
-**Why**: The reference has a prominent cart icon with item count. Medusa's current cart button is functional but minimal.
+Apply `.btn.btn-icon` to the cart trigger button. Apply `.badge` to the count span.
 
-### 4.2 Account link
+### 1.4 SideMenu (Mobile Hamburger)
 
-**File**: `apps/storefront/src/modules/layout/templates/nav/index.tsx`
+**File:** `apps/storefront/src/modules/layout/components/side-menu/index.tsx`
 
-The account link currently renders as a simple text link. Enhance it with:
-- Icon (use existing `User` icon from `@modules/common/icons`)
-- Consistent styling with other header actions
+The hamburger trigger is a `Popover.Button` with text "Menu". Enhance it:
+- Replace text with `Menu` icon from `@medusajs/icons`
+- Apply `.btn.btn-icon` classes
+- Keep the existing `Popover` behavior — no structure changes
 
-**Why**: The reference uses icon buttons for account and cart. This improves scanability.
+**Current:**
+```tsx
+<Popover.Button
+  data-testid="nav-menu-button"
+  className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-none hover:text-ui-fg-base"
+>
+  Menu
+</Popover.Button>
+```
 
-### 4.3 Search action
+**Target:**
+```tsx
+<Popover.Button
+  data-testid="nav-menu-button"
+  className="btn btn-icon btn-ghost rounded-full text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-base-hover"
+>
+  <Menu className="w-4 h-4" />
+</Popover.Button>
+```
 
-**Status**: **IGNORED** — The reference has a search icon/action in the header. The MedusaJS storefront handles search differently (via the store page's `RefinementList`). Adding a header search trigger would require either:
-- A new search modal/page
-- Integration with the existing search params on `/store`
-- Potentially new server actions
+### 1.5 Dark Mode Variants
 
-This is out of scope for a header styling plan. If the user wants header search, create a separate plan.
+All header classes must work with `darkMode: "class"`. Since we're using Medusa preset tokens (`bg-ui-bg-base`, `text-ui-fg-base`, `border-ui-border-base`) and our new `.navbar-surface` global class, dark mode is automatic — no extra `dark:` variants needed.
 
----
-
-## Step 5 — Mobile Header
-
-### 5.1 Hamburger menu
-
-**File**: `apps/storefront/src/modules/layout/components/side-menu/index.tsx`
-
-The `SideMenu` already renders a hamburger icon on mobile. Ensure:
-- The hamburger is visible only on mobile (`flex small:hidden`)
-- The desktop nav is hidden on mobile (`hidden small:flex`)
-- The `Popover` panel has proper max-width and padding
-
-**Why**: The reference collapses to a hamburger menu on mobile. Medusa's `SideMenu` already does this, but the styling may need alignment.
-
-### 5.2 Mobile menu content
-
-Ensure the mobile menu includes:
-- Brand/logo at the top
-- Navigation links
-- Language/country selectors
-- Account/cart links
-
-**Why**: The reference's mobile menu is a full-screen or slide-in panel with all nav items. Medusa's `SideMenu` renders a fixed list — verify it includes all necessary links.
-
----
-
-## Step 6 — Theme Consistency
-
-### 6.1 Use Plan 01 tokens
-
-All header styling must use:
-- `@medusajs/ui-preset` tokens for backgrounds, borders, text
-- `theme.*` color scale for accents (from Plan 01)
-- `globals.css` utilities if needed (e.g. `backdrop-blur`)
-
-### 6.2 No new design tokens
-
-Do not add new colors, shadows, or spacing values specifically for the header. Use existing tokens or extend `tailwind.config.js` only if the token is needed by 2+ components.
+Verify by toggling `.dark` on `<html>` during Stage 1 verification.
 
 ---
 
-## Verification
+## Stage 2 — Reference Adaptations Without New Features
 
-After implementing this plan:
+**Goal:** Apply reference visual patterns using only existing Medusa components, existing data, and global classes. No new buttons, no new links, no new data fetching, no new files.
 
-1. **TypeScript**: `cd apps/storefront && pnpm exec tsc --noEmit` — 0 errors
-2. **Lint**: `cd apps/storefront && pnpm run lint` — no new errors
-3. **Build**: `cd apps/storefront && pnpm run build` — succeeds
-4. **Runtime**: `pnpm run dev` — header renders correctly at all breakpoints
-5. **Dark mode**: Toggle `.dark` on `<html>` — header renders correctly in dark mode
-6. **Mobile**: Resize to `< 1024px` — hamburger menu appears, desktop nav hides
-7. **Cart dropdown**: Click cart icon — dropdown opens with correct items
+These are the reference patterns we can adapt **without adding any new functionality**:
+
+- **Icon-style buttons instead of text links for account** — convert the Account text link to an icon button using existing `@medusajs/icons` and `.btn.btn-icon`
+- **Active state styling for nav items** — use `usePathname()` in client components (`SideMenu`, `CartDropdown`) to highlight the current page
+- **Badge styling for cart count** — apply `.badge` global classes to the cart count in `CartDropdown`
+- **Hover/focus states using Medusa tokens** — add `transition-all duration-150`, `hover:bg-ui-bg-base-hover`, `focus-visible:ring-2 focus-visible:ring-ui-fg-interactive` to interactive elements
+- **Proper spacing and alignment** — ensure consistent gaps, padding, and alignment using Medusa spacing tokens
+
+### 2.1 Account Link → Icon Button
+
+**File:** `apps/storefront/src/modules/layout/templates/nav/index.tsx`
+
+Convert the Account text link to an icon-button style using existing `@medusajs/icons`:
+- Use `User` icon from `@medusajs/icons`
+- Apply `.btn.btn-icon` global classes
+- Add `rounded-full` for the reference's circular button shape
+- Add `border-ui-border-base` for subtle border
+- Add hover/focus states using Medusa tokens
+
+**Current:**
+```tsx
+<LocalizedClientLink
+  className="hover:text-ui-fg-base"
+  href="/account"
+  data-testid="nav-account-link"
+>
+  Account
+</LocalizedClientLink>
+```
+
+**Target:**
+```tsx
+<LocalizedClientLink
+  href="/account"
+  className="btn btn-icon btn-ghost rounded-full border border-ui-border-base text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-base-hover"
+  data-testid="nav-account-link"
+>
+  <User className="w-4 h-4" />
+</LocalizedClientLink>
+```
+
+**Note:** We use `LocalizedClientLink` (existing component) rather than creating a new button. The `btn-icon` class gives us the square aspect-ratio and centering. The `border` class adds the subtle outline the reference uses.
+
+### 2.2 Active State for Account/Cart Icons
+
+Use `usePathname()` in client-side components (`CartDropdown`, `SideMenu`). `Nav` is a server component, so we cannot use `usePathname()` there directly. Instead:
+
+- **CartDropdown** — already a client component. Can detect if current path is `/cart` and apply active styling.
+- **SideMenu** — already a client component. Can highlight the active link in the mobile menu.
+
+**Option:** If desktop active states are needed, create a small client wrapper inside `Nav`:
+```tsx
+// Inside nav/index.tsx
+import ActiveAwareLink from "./active-aware-link"
+
+// In JSX:
+<ActiveAwareLink href="/account" icon={User} />
+```
+
+Only create `active-aware-link.tsx` if desktop nav links are added later.
+
+### 2.3 Cart Count Badge
+
+Ensure the cart count badge in `CartDropdown` uses `.badge` global classes:
+```tsx
+<span className="badge badge-new">{cart.items?.length || 0}</span>
+```
+
+### 2.4 Hover/Focus Micro-interactions
+
+Apply global transition utilities to interactive elements:
+- `transition-all duration-150` on icon buttons
+- `hover:bg-ui-bg-base-hover` for subtle background change
+- `focus-visible:ring-2 focus-visible:ring-ui-fg-interactive` for accessibility
+- `active:scale-95` only if it doesn't conflict with existing transitions
+
+### 2.5 Spacing and Alignment
+
+Ensure consistent spacing using Medusa tokens:
+- Header height: `h-16` (64px) — matches reference
+- Icon button size: `w-8 h-8` or `w-9 h-9` — matches reference
+- Gap between actions: `space-x-1` or `space-x-1.5` — matches reference
+- Brand padding: consistent with action padding
 
 ---
 
-## Files Changed
+## Stage 3 — Review and Refinement
 
-| File | Change |
-|---|---|
-| `apps/storefront/src/modules/layout/templates/nav/index.tsx` | Enhance styling, add desktop nav, active states |
-| `apps/storefront/src/modules/layout/components/cart-button/index.tsx` | Enhance cart button styling |
-| `apps/storefront/src/modules/layout/components/side-menu/index.tsx` | Verify mobile menu content and styling |
-| `knowledgebase/site-structure/components.md` | Update header component docs |
-| `knowledgebase/customizations/rules.md` | Add header-specific rules if needed |
-| `knowledgebase/customizations/instructions.md` | Add header implementation guidance |
+**Goal:** Verify visual consistency, dark mode, and mobile behavior.
+
+### 3.1 Visual Audit
+
+Check at all breakpoints:
+- Desktop (`>= 1024px`): Brand center, actions right, no hamburger
+- Tablet (`768px - 1023px`): Same as desktop
+- Mobile (`< 768px`): Hamburger visible, desktop nav hidden
+
+### 3.2 Dark Mode Audit
+
+Toggle `.dark` on `<html>` and verify:
+- Header background switches correctly
+- Text color switches correctly
+- Borders switch correctly
+- Buttons/icons remain visible
+
+### 3.3 Accessibility Audit
+
+- All interactive elements have `focus-visible` styles
+- Icon buttons have `aria-label` or `title` attributes
+- Color contrast meets WCAG AA
 
 ---
 
-## Out of Scope for This Plan
+## Files to Modify
 
-- Search icon/action in header — requires new modal/page or integration with existing search; ignored by default
-- Mega menu or dropdown nav — reference may have complex dropdowns; keep Medusa's simple link list unless user requests otherwise
-- Announcement bar — reference may have a top announcement strip; ignored unless user asks
-- Cart drawer vs dropdown — Medusa uses dropdown; do not change to drawer without explicit request
+| File | Change | Stage |
+|---|---|---|
+| `apps/storefront/src/modules/layout/templates/nav/index.tsx` | Header classes, brand link, account link → icon button | 1 + 2 |
+| `apps/storefront/src/modules/layout/components/cart-button/index.tsx` | Ensure server component passes correct classes to CartDropdown | 1 |
+| `apps/storefront/src/modules/layout/components/cart-dropdown/index.tsx` | Cart trigger → `.btn.btn-icon`, badge → `.badge` | 1 + 2 |
+| `apps/storefront/src/modules/layout/components/side-menu/index.tsx` | Hamburger → icon + `.btn.btn-icon` | 1 |
 
-## Ignored Features
+**No new files in any stage.** All changes reuse existing components and global classes.
 
-The following are intentionally **not** part of this plan and should not be added unless the user explicitly requests them:
+---
 
-- **Header search** — would require a new search modal, page, or integration with existing search params. Out of scope.
-- **Mega menus / dropdown navigation** — the reference may have complex dropdown nav items. Medusa's current simple link list is sufficient unless the user requests otherwise.
-- **Announcement bar** — a top strip with promotions/announcements is not in the current Medusa scaffold. Out of scope.
-- **Cart drawer replacement** — Medusa uses a dropdown. Do not replace it with a full-page drawer or slide-out panel unless explicitly requested.
-- **New npm dependencies for icons** — the reference may use an icon library. Medusa already has `@medusajs/icons` and inline SVGs. Do not add `lucide-react` or similar unless explicitly requested.
-- **Backend changes** — header personalization, saved preferences, or any feature requiring new schemas/modules. Out of scope.
+## What We Do Not Change
 
-**Rule:** If a reference header feature requires any of the above, document it here as "ignored" and ask the user whether to proceed before implementing.
+- No new layout structure
+- No new data fetching
+- No new server actions
+- No new npm packages
+- No new CSS files
+- No changes to `SideMenu` Popover behavior
+- No changes to `CartDropdown` open/close logic
+- No changes to account/cart routing
+- No search, wishlist, theme toggle, or other reference features not in Medusa
+
+---
+
+## Key Differences from Reference (Architectural)
+
+These are **intentional** differences between our Medusa header and the reference. They are **not** bugs or missing features — they reflect different architectural choices.
+
+| Aspect | Reference | Medusa | Reason |
+|---|---|---|---|
+| Cart interaction | Drawer (slides from right) | Popover dropdown | Medusa scaffold uses Popover; drawer requires new component |
+| Search | Megamenu overlay with results grid | No header search; search on `/store` | Medusa handles search via `RefinementList` |
+| Desktop nav | Full nav links with hover dropdowns | No desktop nav links | Not in Medusa scaffold |
+| Mobile menu | Full-screen drawer with accordions | Popover-based `SideMenu` | Medusa scaffold uses Popover |
+| Wishlist | Icon button with badge | Not implemented | No Medusa wishlist module |
+| Theme toggle | Icon button | Not exposed | `darkMode: "class"` configured but no UI toggle |
+| User avatar | Shown in header/account button | Not fetched | Medusa customer schema doesn't include avatar URLs |
+| State management | React contexts (cart, auth, wishlist, UI) | Server components + SDK | Medusa uses RSC + server actions |
+
+---
+
+## Verification Checklist
+
+- [ ] `pnpm exec tsc --noEmit` — 0 errors
+- [ ] `pnpm run lint` — no new errors
+- [ ] Dev server compiles without errors
+- [ ] Header renders correctly at all breakpoints
+- [ ] Hamburger menu appears on mobile, desktop nav unaffected
+- [ ] Cart dropdown opens and shows correct count
+- [ ] Account icon button links to `/account`
+- [ ] Brand link links to `/`
+- [ ] Dark mode: toggle `.dark` on `<html>`, header renders correctly
+- [ ] No new npm packages added
+- [ ] No new CSS files created
+- [ ] All styling uses global classes or Medusa preset tokens
+
+---
+
+## Out of Scope
+
+- Cart drawer replacement (Medusa uses dropdown)
+- Header search / search megamenu
+- Desktop nav links with dropdowns
+- Wishlist button
+- Theme toggle
+- User avatar in header
+- Mobile full-screen drawer
+- Mega menu / dropdown navigation
+- Announcement bar
+
+## Ignored Reference Features
+
+The reference header includes features that are **not** part of this plan:
+
+- **Cart drawer** — Reference uses a drawer (slides from right). Medusa uses a Popover dropdown. Converting requires new component structure. Out of scope.
+- **Search megamenu overlay** — Reference has a full search overlay with popular tags, results grid, quick add to cart. Medusa handles search on `/store` via `RefinementList`. Adding header search requires a new modal/page. Out of scope.
+- **Desktop nav links with dropdowns** — Reference has Home, Shop, Categories dropdown, Company dropdown, User menu dropdown, Seller Hub, Admin. Medusa's header has none. Adding requires new components and routing. Out of scope.
+- **Wishlist button** — No Medusa wishlist module exists. Would require backend changes.
+- **Theme toggle** — Reference has a dark/light mode toggle. Medusa's storefront does not expose dark mode to users. Out of scope.
+- **User avatar** — Reference shows user avatars in the header. Medusa does not fetch avatar URLs in the current customer schema. Out of scope.
+- **Mobile full-screen drawer** — Reference has a full-screen mobile drawer with accordions. Medusa uses a Popover-based `SideMenu`. Converting requires new component structure. Out of scope.
+- **Lucide icons** — Reference uses `lucide-react`. Medusa uses `@medusajs/icons` and inline SVGs. Do not add new icon libraries.
+
+**Rule:** If a reference header feature is not in Medusa's scaffold, document it here as "ignored" and ask the user whether to proceed before implementing.

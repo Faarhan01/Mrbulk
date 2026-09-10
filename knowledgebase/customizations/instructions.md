@@ -3,6 +3,18 @@
 This document is the single source of truth for making changes to the `medusa-js` project. It covers the project structure, how to make UI changes, bug fixes, add new features, create components, and verify your work.
 
 > **Architecture-first rule:** Never copy-paste components or features from a reference codebase without first adapting them to this storefront's architecture, design tokens, routing conventions, and data layer. If a reference feature depends on a backend schema, module, or API that does not exist here, treat it as out of scope until the user explicitly asks for backend work.
+>
+> **Priority order:** 1) Designs and global styling first — apply global classes, tokens, and layout improvements to existing components. 2) Static/visual adaptations second — reference patterns that can be implemented with existing components and data, without creating new files or adding new data fetching. 3) New features third — only after the above, and only when the existing architecture cannot express the desired behavior.
+>
+> **No-duplicates rule:** When editing an existing page or component, reuse the site's current implementation. Do not create a second sorting UI, a second cart flow, or a second checkout step. Apply styling changes or extend the existing feature. Creating a duplicate fragment while leaving the original intact causes divergence, doubles maintenance, and breaks the single source of truth.
+
+## Bug Tracking
+
+All bugs use a `BUG-01` through `BUG-99` identifier system:
+- `BUG-01` through `BUG-99` — ordered by priority (critical runtime bugs first, UI polish last)
+- Each bug gets a status: **(Fixed)**, **(Not Fixed)**, or **(No Fix Needed)**
+- Bug details live in `known-issues.md`
+- Fix details live in `frontend-fixes.md`
 
 ---
 
@@ -763,6 +775,21 @@ Make sure you are using the correct import paths (`@modules/...`, `@lib/...`). R
 ### ESLint errors after a change
 
 Run `pnpm run lint` in the affected app to see the exact errors. Fix the code; do not disable `@medusajs/*` rules.
+
+## Documentation Rules
+
+- Update `known-issues.md` and `frontend-fixes.md` when applying or planning a fix.
+- Use `context.md` only for environment metadata and overall scaffold state — do not put bug details there.
+- Use relative links between docs (e.g., `known-issues.md`) instead of cross-referencing with full paths.
+- Use absolute paths only for source files (e.g., `apps/storefront/src/...`).
+
+## Known Noise (Safe to Ignore)
+
+- `redisUrl not found` / `Local Event Bus installed` — expected for local dev
+- `GET /store/customers/me 401` — anonymous session, expected
+- `GET /store/locales 404` — harmless scaffold probe
+- `next lint` is deprecated — use `pnpm exec next lint` or migrate to `eslint .`
+- ~335 `TS2786` errors without overrides — resolved by `pnpm-workspace.yaml` overrides (already applied)
 
 ---
 
