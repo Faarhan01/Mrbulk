@@ -12,16 +12,17 @@ import MapPin from "@modules/common/icons/map-pin"
 import Package from "@modules/common/icons/package"
 import User from "@modules/common/icons/user"
 
-type Tab = "profile" | "orders" | "addresses"
+type Tab = "overview" | "profile" | "orders" | "addresses"
 
 const tabs: { key: Tab; label: string; icon: React.FC<{ size: number }> }[] = [
+  { key: "overview", label: "Overview", icon: User },
   { key: "profile", label: "Profile", icon: User },
   { key: "orders", label: "Orders", icon: Package },
   { key: "addresses", label: "Addresses", icon: MapPin },
 ]
 
 const AccountNav = ({
-  customer,
+  customer: _customer,
   activeTab,
 }: {
   customer: HttpTypes.StoreCustomer | null

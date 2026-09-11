@@ -8,6 +8,7 @@ import AccountNav from "../components/account-nav"
 import { AccountTabProvider, useAccountTab } from "../components/account-nav/account-tab-context"
 import { HttpTypes } from "@medusajs/types"
 import PageBanner from "@modules/common/components/shared/page-banner"
+import { clx } from "@modules/common/components/ui"
 
 interface AccountLayoutProps {
   customer: HttpTypes.StoreCustomer | null
@@ -34,15 +35,17 @@ const AccountLayoutInner = ({
       />
       <div className="content-container bg-white flex flex-col">
         <div className="max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12 gap-6">
-            <div>
-              <div className="sidebar-panel-surface p-3 sm:p-4">
-                {customer && <AccountNav customer={customer} activeTab={activeTab} />}
+          <div className={clx("grid grid-cols-1 py-12 gap-6", customer && "small:grid-cols-[240px_1fr]")}>
+            {customer && (
+              <div>
+                <div className="sidebar-panel-surface p-3 sm:p-4">
+                  <AccountNav customer={customer} activeTab={activeTab} />
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex-1">{children}</div>
           </div>
-          <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-gray-200 py-12 gap-8">
+          <div className="flex flex-col small:flex-row items-center justify-center small:border-t border-gray-200 py-12 gap-8">
             <div>
               <h3 className="text-xl-semi mb-4">Got questions?</h3>
               <span className="txt-medium">
@@ -64,7 +67,7 @@ const AccountLayoutInner = ({
 
 const AccountLayout = ({ customer, children }: AccountLayoutProps) => {
   return (
-    <AccountTabProvider defaultTab="profile">
+    <AccountTabProvider defaultTab="overview">
       <AccountLayoutInner customer={customer}>{children}</AccountLayoutInner>
     </AccountTabProvider>
   )

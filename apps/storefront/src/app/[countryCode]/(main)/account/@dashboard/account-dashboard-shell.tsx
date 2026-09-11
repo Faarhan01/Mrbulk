@@ -2,6 +2,7 @@
 
 import React from "react"
 import { useAccountTab } from "@modules/account/components/account-nav/account-tab-context"
+import Overview from "@modules/account/components/overview"
 import ProfileName from "@modules/account/components/profile-name"
 import ProfileEmail from "@modules/account/components/profile-email"
 import ProfilePhone from "@modules/account/components/profile-phone"
@@ -25,6 +26,12 @@ const AccountDashboardShell = ({
 
   return (
     <div className="flex-1 space-y-6">
+      {activeTab === "overview" && (
+        <div className="checkout-step-surface w-full space-y-6" data-testid="overview-page-wrapper">
+          <Overview customer={customer} orders={orders} />
+        </div>
+      )}
+
       {activeTab === "profile" && (
         <div className="checkout-step-surface w-full space-y-6" data-testid="profile-page-wrapper">
           <div className="flex flex-col gap-y-4">

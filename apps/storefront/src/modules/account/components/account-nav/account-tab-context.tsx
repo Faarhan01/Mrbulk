@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState } from "react"
 
-type Tab = "profile" | "orders" | "addresses"
+type Tab = "overview" | "profile" | "orders" | "addresses"
 
 interface AccountTabContextValue {
   activeTab: Tab
@@ -13,7 +13,7 @@ const AccountTabContext = createContext<AccountTabContextValue | undefined>(unde
 
 export const AccountTabProvider = ({
   children,
-  defaultTab = "profile",
+  defaultTab = "overview",
 }: {
   children: React.ReactNode
   defaultTab?: Tab

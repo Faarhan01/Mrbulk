@@ -110,6 +110,20 @@
 
 ---
 
+### BUG-16 — Logout redirects to malformed `/account` URL
+
+**Status: (Fixed)**
+
+**File:** `apps/storefront/src/lib/data/customer.ts` (line 250)
+
+**Symptom:** Clicking Log out from any account sub-page redirects to `/<countryCode>/account`. Because the logout server action hardcodes a redirect, the browser ends up on a malformed path like `/dk/us/account` and the account layout re-renders as a 404 instead of showing the login form.
+
+**Root Cause:** The upstream `signout()` server action calls `redirect(\`/${countryCode}/account\`)` after clearing the auth token. This was a workaround for the old parallel-route behavior, but it produces an invalid URL when the caller is already on `/account/profile`, `/account/orders`, etc. The official Medusa starter no longer performs this redirect; it only revalidates auth/cart cache tags and lets the current page re-render.
+
+**Fix Applied:** Removed the `redirect()` call from `signout()` entirely. The client-side logout handler now calls `router.refresh()` after `signout()` so the current account page re-renders and shows the login form (since `retrieveCustomer()` now returns `null`). This matches the official starter behavior.
+
+---
+
 ## Not Fixed (Upstream / Optional)
 
 ### BUG-07 — Profile email form is a no-op

@@ -85,7 +85,7 @@
   --border-focus: #2563eb;
 
   /* Focus / interaction */
-  --focus-ring: rgba(37, 99, 235, 0.4);
+  --focus-ring: rgba(37, 99, 235, 0.55);
 
   color-scheme: light;
 }
@@ -98,8 +98,8 @@
   --input-border-focus: #3b82f6;
   --input-text: #f8fafc;
   --input-placeholder: #64748b;
-  --input-ring: rgba(59, 130, 246, 0.3);
-  --input-ring-error: rgba(244, 63, 94, 0.3);
+  --input-ring: rgba(59, 130, 246, 0.55);
+  --input-ring-error: rgba(244, 63, 94, 0.35);
   --btn-primary-bg: #2563eb;
   --btn-primary-hover: #3b82f6;
   --btn-primary-active: #1d4ed8;
@@ -304,20 +304,20 @@
      border-color: var(--input-border-hover);
    }
 
-   input[type="text"]:focus,
-   input[type="email"]:focus,
-   input[type="password"]:focus,
-   input[type="number"]:focus,
-   input[type="search"]:focus,
-   input[type="tel"]:focus,
-   input[type="url"]:focus,
-   input[type="date"]:focus,
-   textarea:focus,
-   select:focus {
-     border-color: var(--input-border-focus);
-     box-shadow: 0 0 0 3px var(--input-ring);
-     background-color: var(--input-bg);
-   }
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    input[type="search"]:focus,
+    input[type="tel"]:focus,
+    input[type="url"]:focus,
+    input[type="date"]:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--input-border-focus);
+      box-shadow: 0 0 0 2px var(--input-ring);
+      background-color: var(--input-bg);
+    }
 
    input:disabled,
    textarea:disabled,
@@ -1061,7 +1061,7 @@ h1, h2, h3 { text-wrap: balance; }
   .input-control:focus {
     border-color: var(--input-border-focus);
     outline: none;
-    box-shadow: 0 0 0 1px var(--input-ring);
+    box-shadow: 0 0 0 2px var(--input-ring);
   }
 
   .input-control:disabled {
