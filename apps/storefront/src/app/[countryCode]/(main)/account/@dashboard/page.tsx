@@ -13,4 +13,11 @@ export default async function Dashboard() {
     notFound()
   }
 
-  return <AccountDashboardShell customer={customer} orders={orders} regions={regions} countryCode={customer.country_code || "us"} />
+  return (
+    <AccountDashboardShell
+      customer={customer}
+      orders={orders}
+      regions={regions}
+    />
+  )
+}
