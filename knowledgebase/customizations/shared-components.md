@@ -10,7 +10,7 @@ This document defines the reusable shared components available in the storefront
 
 **Location**: `src/modules/common/components/shared/page-banner/index.tsx`  
 **Type**: Client component (`"use client"`)  
-**Purpose**: Unified page header with breadcrumb, title, description, badge, and optional background image.
+**Purpose**: Unified page header with breadcrumb, title, description, badge, and optional actions.
 
 #### Props
 
@@ -18,14 +18,9 @@ This document defines the reusable shared components available in the storefront
 |---|---|---|---|---|
 | `title` | `string` | Yes | — | Page title |
 | `description` | `string` | No | — | Short description below the title |
-| `badge` | `string` | No | — | Pill badge text (e.g. "Curated Department") |
-| `themeColor` | `string` | No | `"blue"` | Theme accent: `blue`, `indigo`, `emerald`, `rose`, `amber`, `slate` |
-| `logoText` | `string` | No | `"Mrbulk"` | Logo text appended to title |
+| `badge` | `string` | No | — | Pill badge text |
 | `onBack` | `() => void` | No | `router.back()` | Back button handler |
 | `actions` | `React.ReactNode` | No | — | Action buttons/links rendered below description |
-| `backgroundImage` | `string` | No | — | URL for background image |
-| `backgroundAlt` | `string` | No | `""` | Alt text for background image |
-| `overlayGradient` | `string` | No | Preset slate gradient | CSS gradient classes for image overlay |
 | `backLabel` | `string` | No | `"Home"` | Text for the breadcrumb back-link |
 
 #### Usage
@@ -34,103 +29,91 @@ This document defines the reusable shared components available in the storefront
 import { PageBanner } from "@modules/common/components/shared/page-banner"
 
 <PageBanner
-  title="Explore All Categories"
-  description="Browse our structured collections..."
-  badge="Department Catalog"
-  themeColor="blue"
-  onBack={() => router.push('/')}
+  title="About Us"
+  description="Learn more about our store."
+  badge="Our Story"
   backLabel="Home"
-  backgroundImage="https://..."
-  backgroundAlt="Categories"
-  overlayGradient="bg-gradient-to-b from-white/70 via-white/40 to-white/70 dark:from-slate-950/80 dark:via-slate-950/50 dark:to-slate-950/85"
 />
 ```
 
 #### Rules
 
-- Always provide `themeColor` so the banner adapts to the page's theme.
-- When using `backgroundImage`, always provide `overlayGradient` for readability.
-- The `backLabel` prop exists because different pages have different back-link semantics (e.g. "All Departments" vs "Back to Home").
-- Do not add inline styles. Use Tailwind utilities or the `themeColor` prop.
+- Always provide `title`.
+- Use `description` for a short summary below the title.
+- Use `badge` for optional pill text above the title.
+- The `backLabel` prop exists because different pages have different back-link semantics.
+- Do not add inline styles. Use Tailwind utilities.
+- Use Medusa UI tokens (`text-ui-fg-*`, `bg-ui-bg-*`, `border-ui-border-*`) for all colors.
 
----
+#### Consumers
 
-### CategoryBarCarousel
+| Page | Path | Notes |
+|---|---|---|
+| About | `app/[countryCode]/(main)/about/page.tsx` | Full-width banner outside `content-container` |
+| Contact | `app/[countryCode]/(main)/contact/page.tsx` | Full-width banner outside `content-container` |
+| FAQ | `app/[countryCode]/(main)/faq/page.tsx` | Full-width banner outside `content-container` |
+| Terms | `app/[countryCode]/(main)/terms/page.tsx` | Full-width banner outside `content-container` |
+| Returns | `app/[countryCode]/(main)/returns/page.tsx` | Full-width banner outside `content-container` |
+| Seller Policy | `app/[countryCode]/(main)/seller-policy/page.tsx` | Full-width banner outside `content-container` |
+| Privacy | `app/[countryCode]/(main)/privacy/page.tsx` | Full-width banner outside `content-container` |
+| Featured Products | `app/[countryCode]/(main)/featured/page.tsx` | Full-width banner outside `content-container` |
+| Track Order | `app/[countryCode]/(main)/track-order/page.tsx` | Full-width banner outside `content-container` |
+| Wishlist | `app/[countryCode]/(main)/wishlist/page.tsx` | Full-width banner outside `content-container` |
+| Categories | `app/[countryCode]/(main)/categories/page.tsx` | Full-width banner outside `content-container` |
+| Account | `app/[countryCode]/(main)/account/layout.tsx` via `AccountLayout` | Banner outside `content-container`; account nav/content wrapped separately |
 
-**Location**: `src/modules/common/components/shared/category-bar/index.tsx`  
-**Type**: Client component (`"use client"`)  
-**Purpose**: Horizontal scrollable category button track with left/right scroll controls and drag-to-scroll.
+#### Not Used On
 
-#### Props
+- **Checkout** (`app/[countryCode]/(checkout)/checkout/page.tsx`) — checkout has its own minimal chrome.
+- **Cart** (`app/[countryCode]/(main)/cart/page.tsx`) — cart has its own template.
+- **Account dashboard pages** (`profile`, `orders`, `addresses`, `orders/details/[id]`) — the account layout already renders the banner; do not add another `PageBanner` inside these pages.
 
-| Prop | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `categories` | `MockCategoryPreset[]` | Yes | — | Category list |
-| `selectedCategory` | `string` | No | `"All"` | Currently selected category name |
-| `onSelectCategory` | `(name: string, id?: number \| string) => void` | Yes | — | Selection handler |
-| `themeColor` | `string` | No | `"blue"` | Theme accent |
-| `currentTheme` | `{ bg: string; text: string; border: string; ... }` | No | — | Pre-resolved theme classes |
-| `className` | `string` | No | `""` | Additional wrapper classes |
+### PageBanner Width Rule
 
-#### Usage
+`PageBanner` renders its own full-width outer wrapper:
 
 ```tsx
-import { CategoryBarCarousel } from "@modules/common/components/shared/category-bar"
-
-<CategoryBarCarousel
-  categories={categories}
-  selectedCategory={activeCategory}
-  onSelectCategory={(name) => router.push(getCategoryUrl(name))}
-  themeColor={themeColor}
-  currentTheme={currentTheme}
-/>
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
 ```
 
-#### Rules
+Because of this, **do not wrap `PageBanner` in `content-container` or any other centered/max-width wrapper**. If you do, the banner will be narrowed because it will inherit the parent’s max-width instead of using its own.
 
-- Always pass `themeColor` and `currentTheme` for consistent active-state styling.
-- The component handles drag-to-scroll internally. Do not wrap it in another scroll container.
-- The `All` item is prepended automatically. Do not include it in the `categories` array.
-
----
-
-### RecentlyViewedSection
-
-**Location**: `src/modules/common/components/shared/recently-viewed/index.tsx`  
-**Type**: Client component (`"use client"`)  
-**Purpose**: Horizontal scrollable strip showing recently viewed products with scroll controls.
-
-#### Props
-
-| Prop | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `products` | `MockProduct[]` | Yes | — | Full product catalog |
-| `recentlyViewedIds` | `string[]` | No | — | Explicit ID list; falls back to `localStorage` |
-| `currentProductId` | `string` | No | — | Product to exclude from the strip |
-| `onSelectProduct` | `(id: string) => void` | Yes | — | Product selection handler |
-| `title` | `string` | No | `"Recently Viewed Items"` | Section heading |
-| `maxItems` | `number` | No | `10` | Max products to show |
-| `className` | `string` | No | `""` | Additional wrapper classes |
-
-#### Usage
+Correct pattern for normal pages:
 
 ```tsx
-import { RecentlyViewedSection } from "@modules/common/components/shared/recently-viewed"
-
-<RecentlyViewedSection
-  products={products}
-  currentProductId={product.id}
-  onSelectProduct={(id) => router.push(getProductUrl(id))}
-  title="Recently Viewed Items"
-  maxItems={10}
-/>
+<div className="w-full">
+  <PageBanner title="Page Title" description="Page description." />
+  <div className="w-full flex justify-center px-8 py-12">
+    <div className="max-w-3xl w-full">
+      {/* page body */}
+    </div>
+  </div>
+</div>
 ```
 
-#### Rules
+Account layout exception:
 
-- The component reads `localStorage` key `luxestore_recently_viewed` when `recentlyViewedIds` is not provided. Do not rely on this in server components.
-- Always pass `currentProductId` to exclude the current product from the strip.
-- The component manages its own scroll ref and controls. Do not wrap it in another scroll container.
+```tsx
+<div data-testid="account-page">
+  <PageBanner ... />
+  <div className="content-container bg-white flex flex-col">
+    <div className="max-w-7xl mx-auto w-full">
+      {/* account nav + content */}
+    </div>
+  </div>
+</div>
+```
+
+This keeps the banner full-width while constraining the account chrome below it.
+
+### Account Page Consumer Notes
+
+The account page (`modules/account/templates/account-layout.tsx`) uses `PageBanner` differently from other pages:
+
+- The banner is rendered **outside** `content-container` so it can use its built-in full-width wrapper.
+- The account nav, main content, and footer block are wrapped in a separate `content-container` + `max-w-7xl mx-auto w-full` div for readability.
+- The welcome message was moved from `modules/account/components/overview/index.tsx` into the banner via `title` and `description` props.
+- When the user is logged out, the banner shows `title="Account"` and `description="Please login or sign up to continue"`.
 
 ---
 
@@ -138,15 +121,16 @@ import { RecentlyViewedSection } from "@modules/common/components/shared/recentl
 
 | Component | Current Consumers | Notes |
 |---|---|---|
-| `PageBanner` | `category-detail-page`, `categories-page`, `search-results-page` | Use for any page-level hero with breadcrumb |
-| `CategoryBarCarousel` | `home-page-client`, `shop-page`, `category-detail-page`, `categories-page`, `search-results-page` | Use on any page that needs category filtering |
-| `RecentlyViewedSection` | `home-page-client`, `product-detail-page` | Use wherever recently viewed products should appear |
+| `PageBanner` | About, Contact, FAQ, Terms, Returns, Seller Policy, Privacy, Featured Products, Track Order, Wishlist, Categories | Use for any page-level hero with breadcrumb |
 
-## Where NOT to Use Shared Components
+### Account Page Consumer Notes
 
-- **Home page hero slider**: The home page has a custom animated hero (`HeroBanner`). Do not replace it with `PageBanner`.
-- **Admin dashboard**: These components are storefront-only. Do not import them in admin routes.
-- **Checkout flow**: Checkout has its own minimal chrome. Do not add shared components there.
+The account page (`modules/account/templates/account-layout.tsx`) uses `PageBanner` differently from other pages:
+
+- The banner is rendered **outside** `content-container` so it can use its built-in full-width wrapper.
+- The account nav, main content, and footer block are wrapped in a separate `content-container` + `max-w-7xl mx-auto w-full` div for readability.
+- The welcome message was moved from `modules/account/components/overview/index.tsx` into the banner via `title` and `description` props.
+- When the user is logged out, the banner shows `title="Account"` and `description="Please login or sign up to continue"`.
 
 ## Adding a New Shared Component
 
@@ -163,3 +147,4 @@ import { RecentlyViewedSection } from "@modules/common/components/shared/recentl
 - Do not add JSDoc comments unless explicitly asked.
 - Do not introduce new UI libraries. Reuse existing local UI primitives (`@modules/common/components/ui`) and Medusa preset tokens.
 - All shared components must support dark mode via `dark:` variants.
+- Use Medusa UI tokens (`text-ui-fg-*`, `bg-ui-bg-*`, `border-ui-border-*`) for all colors. Do not hardcode color values.

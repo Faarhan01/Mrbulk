@@ -396,9 +396,6 @@ h1, h2, h3 { text-wrap: balance; }
     background: var(--bg-base);
     border-color: var(--border-base);
     color: var(--fg-base);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    background-color: rgba(var(--bg-base-rgb), 0.9);
     border-radius: var(--radius-2xl);
     border: 1px solid var(--border-base);
     box-shadow: var(--shadow-elevation-card-rest);
@@ -418,7 +415,7 @@ h1, h2, h3 { text-wrap: balance; }
   }
 
   .footer-surface {
-    background: var(--bg-subtle);
+    background: var(--bg-base);
     border-top: 1px solid var(--border-base);
     color: var(--fg-base);
   }
@@ -623,7 +620,7 @@ h1, h2, h3 { text-wrap: balance; }
   .input-control:focus {
     border-color: var(--input-border-focus);
     outline: none;
-    box-shadow: 0 0 0 3px var(--input-ring);
+    box-shadow: 0 0 0 1px var(--input-ring);
   }
 
   .input-control:disabled {
@@ -636,7 +633,7 @@ h1, h2, h3 { text-wrap: balance; }
   }
 
   .input-control[aria-invalid="true"]:focus {
-    box-shadow: 0 0 0 3px var(--input-ring-error);
+    box-shadow: 0 0 0 1px var(--input-ring-error);
   }
 
   .form-label {

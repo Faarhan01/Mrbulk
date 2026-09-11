@@ -64,6 +64,7 @@ const CartDropdown = ({
   }, [activeTimer])
 
   const pathname = usePathname()
+  const isActive = pathname?.includes("/cart")
 
   // open cart dropdown when modifying the cart items, but only if we're not on the cart page
   useEffect(() => {
@@ -84,8 +85,7 @@ const CartDropdown = ({
           <LocalizedClientLink
             className={clx(
               "btn btn-icon btn-ghost rounded-full text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-base-hover",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive",
-              cartDropdownOpen && "bg-ui-bg-interactive text-ui-fg-on-color border-ui-border-interactive"
+              (cartDropdownOpen || isActive) && "bg-ui-bg-base-hover text-ui-fg-base border-ui-border-strong"
             )}
             href="/cart"
             data-testid="nav-cart-link"

@@ -271,6 +271,44 @@ Once an MCP server is connected, here's how Kilo leverages it when working on th
 - **Correct config options** — exact `medusa-config.ts` keys, env vars, etc.
 - **Step-by-step guides** — for extending products, integrating providers, etc.
 
+### With codebase-context MCP servers (`PatrickSys/codebase-context`, `CodeAlive`, etc.)
+- **Semantic code search** — Kilo can find relevant code by meaning, not just filenames
+- **Architecture understanding** — the agent learns your project's patterns, conventions, and module boundaries
+- **Reduced token usage** — semantic search reduces the number of tokens needed to locate the right code
+- **Faster edits** — the agent spends less time reading unrelated files and more time making correct changes
+- **Cross-session memory** — some MCP servers persist project knowledge across conversations, so Kilo doesn't have to re-discover the same patterns every session
+
+## Why MCP Matters for This Project
+
+### Problems MCP Solves
+
+Without MCP, Kilo operates primarily from training data and the files it can read in your repo. That works, but it has limits:
+
+| Problem | How MCP Helps |
+|---|---|
+| **Stale docs** | MCP docs servers return current Medusa docs, not cutoff-trained snippets |
+| **Backend blindness** | `mcp-medusa` lets Kilo query and mutate real store data instead of guessing |
+| **Codebase sprawl** | A codebase-context MCP server gives semantic search across `apps/backend` and `apps/storefront`, so Kilo finds the right module/workflow/component faster |
+| **Repetition across sessions** | Persistent memory MCP servers remember architecture decisions and conventions between conversations |
+| **Token waste** | Semantic retrieval replaces broad file reads with targeted context, lowering cost and latency |
+
+### What Gets Faster With MCP Enabled
+
+- **Understanding the backend**: Kilo can look up exact workflow names, module links, and API shapes from live docs instead of scanning multiple files.
+- **Making storefront edits**: Kilo can verify component paths, layout inheritance, and Medusa UI token names from the actual codebase instead of relying on memory.
+- **Adding features end-to-end**: With `mcp-medusa`, Kilo can create a product in the admin, verify it in the storefront, and adjust the UI in one flow without manual copy-paste.
+- **Debugging**: Kilo can inspect real orders, cart state, and customer data to diagnose issues instead of asking you to paste logs.
+
+### Recommended MCP Stack for `medusa-js`
+
+For this project, the practical setup is:
+
+1. **`mcp-medusa`** — gives Kilo live admin API access to your backend at `http://localhost:9000`
+2. **Medusa Agent Skills** — encodes Medusa conventions into Kilo's prompts
+3. **Optional: codebase-context MCP** — improves Kilo's ability to search and understand your local repo efficiently
+
+You do **not** need Medusa Cloud for any of this. All options above run locally or connect to your existing local backend.
+
 ---
 
 ## Medusa Agent Skills (Claude Code Plugins)
@@ -313,60 +351,62 @@ Skills are **local markdown files** loaded into the AI agent's context. They enc
 - Common mistakes to avoid
 - Verification steps
 
+### Skills + MCP Together
+
+Skills and MCP are complementary:
+- **MCP** gives the agent live tools and data
+- **Skills** give the agent project-specific rules and patterns
+
+For best results on this project, use both:
+1. Connect `mcp-medusa` so Kilo can query your backend and docs
+2. Install the `medusa-dev` skill so Kilo follows Medusa conventions
+
+Without skills, MCP gives Kilo raw capability but may produce code that doesn't match your project's architecture. Without MCP, skills give Kilo rules but no live data. Together, they give Kilo both the rules and the data to work effectively.
+
 ---
 
 ## Recommended Setup for This Project (`medusa-js`)
 
 Given your local setup at `C:\Users\faarh\OneDrive\Documents\latest1\medusa-js`:
 
-### Step 1: Choose an MCP Server
+### Project MCP Config Files
 
-**Best for your setup:** `mcp-medusa` (Option 1) — it gives both documentation lookup AND actual API operations, runs locally via npx, and connects to your already-running backend at `http://localhost:9000`.
+This repo now includes ready-to-use MCP config files for Cursor and VS Code:
+
+- `.cursor/mcp.json`
+- `.vscode/mcp.json`
+
+Both files include:
+- `mcp-medusa` for Medusa docs/API lookup
+- `codebase-context` for semantic code search across the repo
+
+**Before using:** replace `sk_admin_xxxxxxxxxxxx` in both files with your actual admin API key from `http://localhost:9000/app` → Settings → API Keys.
+
+### Step 1: Install the MCP servers
 
 ```bash
-# Get your admin API key first from http://localhost:9000/app → Settings → API Keys
+npx -y mcp-medusa
+npx -y codebase-context
 ```
 
-### Step 2: Connect to Kilo
+### Step 2: Connect your client
 
-**For Claude Code:**
+**Cursor:**
+Open the project in Cursor. It will auto-detect `.cursor/mcp.json` and prompt you to enable the servers. Accept and restart if prompted.
+
+**VS Code:**
+Open the project in VS Code. It will auto-detect `.vscode/mcp.json` and prompt you to enable the servers. Accept and restart if prompted.
+
+**Claude Code:**
 ```bash
 claude mcp add --transport stdio medusa-admin \
   -- npx -y mcp-medusa \
   --env MEDUSA_BASE_URL=http://localhost:9000 \
   --env MEDUSA_API_KEY=sk_admin_xxxxxxxxxxxx
-```
 
-**For Cursor** — add to `.cursor/mcp.json`:
-```json
-{
-  "mcpServers": {
-    "medusa-admin": {
-      "command": "npx",
-      "args": ["-y", "mcp-medusa"],
-      "env": {
-        "MEDUSA_BASE_URL": "http://localhost:9000",
-        "MEDUSA_API_KEY": "sk_admin_xxxxxxxxxxxx"
-      }
-    }
-  }
-}
-```
-
-**For VS Code** — add to `.vscode/mcp.json`:
-```json
-{
-  "servers": {
-    "medusa-admin": {
-      "command": "npx",
-      "args": ["-y", "mcp-medusa"],
-      "env": {
-        "MEDUSA_BASE_URL": "http://localhost:9000",
-        "MEDUSA_API_KEY": "sk_admin_xxxxxxxxxxxx"
-      }
-    }
-  }
-}
+claude mcp add --transport stdio codebase-context \
+  -- npx -y codebase-context \
+  --env CODEBASE_ROOT=C:/Users/faarh/OneDrive/Documents/latest1/medusa-js
 ```
 
 ### Step 3: Install Medusa Agent Skills (Claude Code)
@@ -382,10 +422,10 @@ claude
 
 Ask Kilo:
 ```
-List all products in my Medusa store
+What patterns does this storefront use for page banners?
 ```
 
-Kilo should now use the MCP server to query your actual backend and return real product data.
+Kilo should now use the MCP servers to query your actual codebase and return relevant patterns.
 
 ---
 
@@ -400,6 +440,33 @@ Kilo should now use the MCP server to query your actual backend and return real 
 | "How do I add a workflow hook?" | Queries docs for current hook API signatures |
 | "Show me today's orders" | Real query against your backend's order data |
 | "Create a customer and send them a welcome email" | Executes admin API calls end-to-end |
+| "Find where the header component is defined" | Semantic code search across the repo — finds it in `modules/layout/templates/nav/index.tsx` |
+| "How does the cart dropdown timer work?" | Reads the actual implementation in `modules/layout/components/cart-dropdown/index.tsx` |
+| "What patterns does this storefront use for page banners?" | Searches the codebase for PageBanner usage and conventions |
+
+## Practical Considerations and Potential Issues
+
+### Authentication and Security
+
+- **Admin API key required**: `mcp-medusa` needs an admin API key (`sk_admin_*`) from the Medusa Admin. Store it securely and never commit it.
+- **Local only**: For local development, `mcp-medusa` runs via `npx` and connects to `http://localhost:9000`. It does not expose your backend to the internet.
+- **No Cloud needed**: All open-source MCP options run entirely on your infrastructure. Your data stays private.
+
+### When MCP Might Cause Issues
+
+| Issue | Cause | Mitigation |
+|---|---|---|
+| **Slow responses** | MCP server adds latency to every tool call | Use local stdio transport; avoid remote HTTP for local dev |
+| **Context bloat** | Too many MCP tools loaded at once | Only connect the MCP servers you need for the current task |
+| **Stale cached docs** | Docs MCP servers bundle a snapshot of docs | Periodically refresh the bundled docs or use live-fetching servers |
+| **Conflicting instructions** | Skills and MCP servers give different advice | Skills take precedence for project conventions; MCP for live data |
+| **Token costs** | MCP tool calls use tokens | Use codebase-context MCP servers to reduce token waste from broad file reads |
+
+### When NOT to Use MCP
+
+- **Simple edits**: For a one-line typo fix, MCP adds overhead. Just edit the file directly.
+- **Well-known patterns**: If Kilo already knows the pattern from the project's `AGENTS.md` and `knowledgebase/`, MCP docs lookup is redundant.
+- **Offline work**: If your backend isn't running, `mcp-medusa` won't help. Fall back to direct code editing.
 
 ---
 

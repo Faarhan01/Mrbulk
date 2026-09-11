@@ -13,6 +13,205 @@ This plan is storefront-only. Backend remains untouched.
 ### MedusaJS Footer (`src/modules/layout/templates/footer/index.tsx`)
 
 - **Type**: Async server component by default
+- **Data fetching**: Previously used `Promise.all` with `listCollections({ fields: "*products" })` and `listCategories()`
+- **Renders**:
+  - Top-level categories (skips entries with `parent_category`)
+  - Up to 6 collections
+  - GitHub/Docs/Source links
+  - `MedusaCTA` line ("Powered by Medusa & Next.js")
+
+### Reference Footer Patterns
+
+The reference frontend (`ref/modern/Nextjsfrontend/frontend/src/@modules/layout/templates/footer/index.tsx`) uses:
+- Multi-column footer with: brand/logo, navigation links, contact info, social links, newsletter signup
+- Consistent spacing and typography
+- Theme-driven accent colors for headings
+- Dark mode support
+- Bottom bar with copyright and legal links
+- Responsive: stacks columns on mobile
+- Column titles with bottom border dividers
+- Links with hover transitions
+- Border around the links grid card
+- Divider above the bottom bar
+
+### Gap Analysis
+
+| Need | MedusaJS Current State | Gap |
+|---|---|---|
+| Multi-column layout | Single-column category/collection list | Need to restructure into columns |
+| Brand/logo section | None — only `MedusaCTA` | Need to add brand block with description |
+| Navigation columns | Flat list of categories | Need to group into columns (e.g., Shop, Account, Company) |
+| Social links | None | **Ignored** — would require static data or backend integration |
+| Newsletter signup | None | **Ignored** — would require backend email integration |
+| Contact info | None | **Ignored** — static content, but out of scope unless user asks |
+| Bottom bar | `MedusaCTA` only | Need to add copyright + legal links |
+| Theme styling | Minimal — uses default Medusa tokens | Need to align with reference's visual hierarchy |
+| Dark mode | Not explicitly styled | Need `dark:` variants |
+| Column title dividers | None | Add `border-b` under column titles |
+| Links grid border | None | Add border around the links grid |
+| Bottom bar divider | None | Add `border-t` above copyright section |
+
+---
+
+## Strategic Approach
+
+**Do NOT replace the footer with a copy of the reference.** Instead:
+
+1. **Enhance the existing `Footer` template** — Restructure the layout into columns while keeping the existing data fetching.
+2. **Use static link groups** — Since the footer now uses static pages, use `LocalizedClientLink` for all internal links.
+3. **Theme tokens only** — Use `@medusajs/ui-preset` tokens for all styling.
+4. **Preserve `MedusaCTA`** — Keep the existing attribution in the bottom bar.
+5. **Match reference styling** — Apply borders, dividers, spacing, and hover transitions from the reference design.
+
+---
+
+## Step 1 — Footer Container
+
+### 1.1 Update root element styling
+
+**File**: `apps/storefront/src/modules/layout/templates/footer/index.tsx`
+
+Enhance the footer container with:
+- Border top (`border-t border-ui-border-base`)
+- Padding (`pt-12 pb-10`)
+- Typography (`text-ui-fg-subtle`)
+
+The `footer-surface` class in `globals.css` already provides:
+- Background (`bg-ui-bg-subtle`)
+- Border top (`border-top: 1px solid var(--border-base)`)
+- Color (`color: var(--fg-base)`)
+
+**Why**: The reference uses a distinct footer background, border, and generous padding. Medusa's current footer is minimal.
+
+---
+
+## Step 2 — Footer Columns
+
+### 2.1 Restructure into columns
+
+**File**: `apps/storefront/src/modules/layout/templates/footer/index.tsx`
+
+Replace the current flat list with a grid:
+```
+[Shopping] [User] [Company] [Policies]
+```
+
+Where:
+- **Shopping**: Home (`/`), Shop (`/store`), Categories (`/categories`)
+- **User**: Account (`/account`), Cart (`/cart`), Wishlist (`/wishlist`), Track Order (`/track-order`)
+- **Company**: About Us (`/about`), Contact Us (`/contact`), FAQ (`/faq`)
+- **Policies**: Terms and Conditions (`/terms`), Returns Policy (`/returns`), Privacy Policy (`/privacy`), Seller Policy (`/seller-policy`)
+
+**Why**: The reference uses a multi-column layout. This is a common footer pattern that improves navigation and SEO.
+
+### 2.2 Column title styling
+
+Each column title has:
+- `txt-small-plus txt-ui-fg-base` for the text
+- `border-b border-ui-border-base pb-2` for the divider line
+
+### 2.3 Link styling
+
+Each link has:
+- `text-ui-fg-subtle txt-small` for the text
+- `hover:text-ui-fg-base transition block py-0.5` for hover effect
+
+---
+
+## Step 3 — Bottom Bar
+
+### 3.1 Add divider and copyright
+
+**File**: `apps/storefront/src/modules/layout/templates/footer/index.tsx`
+
+Add a bottom bar below the main columns:
+- Divider: `border-t border-ui-border-base pt-8`
+- Copyright text: `© {year} Medusa Store. All rights reserved.`
+- `MedusaCTA` component (keep existing)
+
+**Why**: The reference has a bottom bar with a divider above copyright. This is standard ecommerce footer pattern.
+
+---
+
+## Step 4 — Theme and Dark Mode
+
+### 4.1 Apply theme tokens
+
+Use Medusa UI Preset tokens:
+- `text-ui-fg-subtle` for body text
+- `text-ui-fg-base` for headings and hover states
+- `border-ui-border-base` for dividers and borders
+- `footer-surface` for the footer background
+
+### 4.2 Dark mode
+
+All footer elements use Medusa UI tokens which automatically switch via CSS variables:
+- Background: `footer-surface` → uses `var(--bg-subtle)`
+- Text: `text-ui-fg-subtle` → uses `var(--fg-subtle)`
+- Borders: `border-ui-border-base` → uses `var(--border-base)`
+
+---
+
+## Step 5 — Responsive Behavior
+
+### 5.1 Column stacking
+
+Use Tailwind responsive utilities:
+- Desktop: `grid-cols-4`
+- Tablet/mobile: `grid-cols-2`
+
+### 5.2 Bottom bar
+
+Stack copyright and MedusaCTA on mobile:
+- `flex flex-col sm:flex-row items-center justify-between gap-4`
+
+---
+
+## Step 6 — Verification
+
+After implementing this plan:
+
+1. **TypeScript**: `cd apps/storefront && pnpm exec tsc --noEmit` — 0 errors
+2. **Lint**: `cd apps/storefront && pnpm run lint` — no new errors introduced
+3. **Runtime**: `pnpm run dev` — footer renders correctly at all breakpoints
+4. **Dark mode**: Toggle `.dark` on `<html>` — footer renders correctly in dark mode
+5. **Links**: Click footer links — they navigate correctly (or 404 if page doesn't exist yet)
+
+---
+
+## Files Changed
+
+| File | Change |
+|---|---|
+| `apps/storefront/src/modules/layout/templates/footer/index.tsx` | Restructure into 4 columns, add dividers, add bottom bar with divider |
+| `knowledgebase/site-structure/header-footer.md` | Update footer architecture docs |
+
+---
+
+## Out of Scope for This Plan
+
+- Social media links/buttons — ignored by default
+- Newsletter signup form — ignored by default
+- Contact info section — ignored by default
+- About/Contact/Policy pages — separate static-feature plans
+- Backend content management — ignored by default
+
+## Ignored Features
+
+The following are intentionally **not** part of this plan and should not be added unless the user explicitly requests them:
+
+- **Social media links/buttons** — the reference may include Instagram, Twitter, etc. These require static URLs or backend integration. Out of scope.
+- **Newsletter signup form** — requires backend email integration or a third-party service. Out of scope.
+- **Contact information section** — address, phone, email. Static content, but out of scope unless user asks.
+- **About/Contact/Privacy/Terms pages** — creating these static pages is separate work. The footer can link to them once they exist.
+- **Footer theme switcher** — if the reference has a theme toggle in the footer, ignore it. The site uses `darkMode: "class"` with no toggle.
+- **Backend content management** — if the reference allows editing footer content in an admin panel, that requires backend modules and is out of scope.
+- **New npm dependencies for icons/social widgets** — use existing `@medusajs/icons` or inline SVGs only.
+
+**Rule:** If a reference footer feature requires any of the above, document it here as "ignored" and ask the user whether to proceed before implementing.
+### MedusaJS Footer (`src/modules/layout/templates/footer/index.tsx`)
+
+- **Type**: Async server component by default
 - **Data fetching**: `Promise.all` with `listCollections({ fields: "*products" })` and `listCategories()`
 - **Renders**:
   - Top-level categories (skips entries with `parent_category`)

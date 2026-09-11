@@ -23,7 +23,8 @@ src/modules/
 │   │   ├── localized-client-link/
 │   │   ├── modal/
 │   │   ├── native-select/
-│   │   └── radio/
+│   │   ├── radio/
+│   │   └── shared/                # Shared components (PageBanner)
 │   ├── icons/                     # 19 inline SVG icons
 │   └── templates/                 # (empty in this install)
 ├── layout/
@@ -86,6 +87,7 @@ import { Text, Heading, Button, clx } from "@modules/common/components/ui"
 | `LocalizedClientLink` | `modules/common/components/localized-client-link/` | Wraps `next/link` and prefixes `countryCode` |
 | `Modal` | `modules/common/components/modal/` | `@headlessui/react` modal |
 | `NativeSelect` | `modules/common/components/native-select/` | Native select dropdown |
+| `PageBanner` | `modules/common/components/shared/page-banner/` | Page header with breadcrumb, title, description, badge |
 | `Radio` | `modules/common/components/radio/` | Custom radio button |
 | `Input` | `modules/common/components/input/` | Floating-label input |
 

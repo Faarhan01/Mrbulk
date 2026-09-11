@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "medusa-admin": {
+      "command": "npx",
+      "args": ["-y", "mcp-medusa"],
+      "env": {
+        "MEDUSA_BASE_URL": "http://localhost:9000",
+        "MEDUSA_API_KEY": "sk_f74f94586b82d0ea9d1478cc80cb838e76149d83403de9c8a9949c89d6591475"
+      }
+    },
+    "codebase-context": {
+      "command": "npx",
+      "args": ["-y", "codebase-context"],
+      "env": {
+        "CODEBASE_ROOT": "C:/Users/faarh/OneDrive/Documents/latest1/medusa-js"
+      }
+    }
+  }
+}

@@ -39,9 +39,9 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                 <Popover.Button
                   data-testid="nav-menu-button"
                   className={clx(
-                    "btn btn-icon btn-ghost rounded-full text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-base-hover",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive",
-                    open && "bg-ui-bg-interactive text-ui-fg-on-color border-ui-border-interactive"
+                    "btn btn-icon btn-ghost rounded-full border border-ui-border-base text-ui-fg-subtle hover:text-ui-fg-base hover:bg-ui-bg-base-hover",
+                    "focus:outline-none",
+                    open && "bg-ui-bg-base-hover text-ui-fg-base border-ui-border-strong"
                   )}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -145,8 +145,8 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
             </>
           )}
         </Popover>
-      </div>
-    </div>
+          </div>
+        </div>
   )
 }
 
