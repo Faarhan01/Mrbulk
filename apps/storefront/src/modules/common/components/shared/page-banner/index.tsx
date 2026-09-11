@@ -9,6 +9,16 @@ type PageBannerProps = {
   onBack?: () => void
   actions?: React.ReactNode
   backLabel?: string
+  themeColor?: "blue" | "indigo" | "emerald" | "rose" | "amber" | "slate"
+}
+
+const lightBannerBg = {
+  blue: "bg-gradient-to-br from-blue-200/90 via-blue-100/75 to-blue-50/85 dark:from-blue-950/90 dark:via-blue-900/60 dark:to-blue-950/80 border-blue-300/80 dark:border-blue-700/60",
+  indigo: "bg-gradient-to-br from-indigo-200/90 via-indigo-100/75 to-indigo-50/85 dark:from-indigo-950/90 dark:via-indigo-900/60 dark:to-indigo-950/80 border-indigo-300/80 dark:border-indigo-700/60",
+  emerald: "bg-gradient-to-br from-emerald-200/90 via-emerald-100/75 to-emerald-50/85 dark:from-emerald-950/90 dark:via-emerald-900/60 dark:to-emerald-950/80 border-emerald-300/80 dark:border-emerald-700/60",
+  rose: "bg-gradient-to-br from-rose-200/90 via-rose-100/75 to-rose-50/85 dark:from-rose-950/90 dark:via-rose-900/60 dark:to-rose-950/80 border-rose-300/80 dark:border-rose-700/60",
+  amber: "bg-gradient-to-br from-amber-200/90 via-amber-100/75 to-amber-50/85 dark:from-amber-950/90 dark:via-amber-900/60 dark:to-amber-950/80 border-amber-300/80 dark:border-amber-700/60",
+  slate: "bg-gradient-to-br from-slate-200/90 via-slate-100/80 to-slate-50/90 dark:from-slate-800/90 dark:via-slate-850 dark:to-slate-800/80 border-slate-300/90 dark:border-slate-700/70",
 }
 
 const PageBanner = ({
@@ -18,6 +28,7 @@ const PageBanner = ({
   onBack,
   actions,
   backLabel = "Home",
+  themeColor = "blue",
 }: PageBannerProps) => {
   const router = useRouter()
 
@@ -25,12 +36,14 @@ const PageBanner = ({
     if (onBack) {
       onBack()
     } else {
-      router.back()
+      router.push("/")
     }
   }
 
+  const bannerBg = lightBannerBg[themeColor] || lightBannerBg.blue
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
       {/* Navigation Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-ui-fg-subtle px-1 select-none">
         <button
@@ -47,7 +60,7 @@ const PageBanner = ({
         <span className="text-ui-fg-base font-extrabold">{title}</span>
       </div>
 
-      <div className="relative w-full py-8 sm:py-12 px-4 sm:px-8 bg-ui-bg-base border border-ui-border-base rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden">
+      <div className={`relative w-full py-6 sm:py-8 px-4 sm:px-8 ${bannerBg} rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden`}>
         <div className="max-w-3xl mx-auto relative z-10 text-center space-y-4">
           {badge && (
             <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-ui-bg-base border border-ui-border-base shadow-xs text-ui-fg-base select-text">

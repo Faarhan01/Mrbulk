@@ -25,6 +25,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
             : "Please login or sign up to continue"
         }
         backLabel="Home"
+        themeColor="blue"
       />
       <div className="content-container bg-white flex flex-col">
         <div className="max-w-7xl mx-auto w-full">

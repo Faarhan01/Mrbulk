@@ -78,26 +78,7 @@ apps/storefront/
 
 ## Routing
 
-### Region-Based Routing
-- All customer routes are prefixed with `[countryCode]` (e.g. `/dk`, `/us`)
-- `src/middleware.ts` detects region from:
-  1. Cloudflare `cf.country`
-  2. Vercel `x-vercel-ip-country`
-  3. `NEXT_PUBLIC_DEFAULT_REGION` fallback (currently `dk`)
-- 307 redirect when the prefix is missing
-- Maintains a 1-hour in-memory region map and the `_medusa_cache_id` cookie used as a fetch-cache namespace
-
-### Route Groups
-- `(main)` — Nav + Footer + cart banner + shipping nudge
-- `(checkout)` — Minimal checkout chrome
-
-### Parallel Routes (Account)
-- `@dashboard` — Overview, Addresses, Orders, Profile
-- `@login` — Login page
-- `layout.tsx` switches based on `retrieveCustomer()`
-
-### Loading States
-Each route has matching `loading.tsx` files that render skeletons from `src/modules/skeletons/`.
+See [storefront-routing.md](./storefront-routing.md) for the full routing reference: localized URL prefix, middleware, route groups, parallel routes, routes inventory, loading states, not-found pages, server vs client component map, and `generateStaticParams` usage.
 
 ## Global Styles
 

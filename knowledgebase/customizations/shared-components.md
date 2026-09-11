@@ -117,11 +117,58 @@ The account page (`modules/account/templates/account-layout.tsx`) uses `PageBann
 
 ---
 
+### CategoryBarCarousel
+
+**Location**: `src/modules/common/components/shared/category-bar/index.tsx`  
+**Type**: Client component (`"use client"`)  
+**Purpose**: Horizontal scrollable category navigation with left/right scroll controls, drag-to-scroll, and active-state styling.
+
+#### Props
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `categories` | `Array<{ id: string; name: string; handle?: string }>` | Yes | — | Category list from `listCategories()` |
+| `selectedCategory` | `string` | No | `"All"` | Currently selected category name |
+| `onSelectCategory` | `(name: string, handle?: string) => void` | No | — | Custom selection handler; when omitted, carousel navigates to `/${countryCode}/categories/<handle>` |
+| `countryCode` | `string` | No | — | Country code for localized navigation when `onSelectCategory` is omitted |
+| `className` | `string` | No | — | Additional wrapper classes |
+
+#### Usage
+
+```tsx
+import CategoryBarCarousel from "@modules/common/components/shared/category-bar"
+
+<CategoryBarCarousel
+  categories={categories}
+  countryCode={params.countryCode}
+/>
+```
+
+#### Rules
+
+- Always fetch categories in the server component via `listCategories()` and pass them as props. Do not fetch inside the carousel.
+- The carousel prepends an `All` button automatically. Do not include it in the `categories` array.
+- Use Medusa UI tokens for all colors. Do not hardcode colors like `bg-blue-600`.
+- The carousel handles its own scroll state, drag-to-scroll, and active-item auto-scroll. Do not wrap it in another scroll container.
+- For pages that need custom category selection behavior (e.g. filtering the store), pass `onSelectCategory`. For simple navigation, pass `countryCode` and let the carousel handle routing.
+
+#### Consumers
+
+| Page | Path | Notes |
+|---|---|---|
+| Home | `app/[countryCode]/(main)/page.tsx` | Default navigation via `countryCode` |
+| Store | `app/[countryCode]/(main)/store/page.tsx` | Default navigation via `countryCode` |
+| Categories | `app/[countryCode]/(main)/categories/page.tsx` | Default navigation via `countryCode` |
+| Category Detail | `app/[countryCode]/(main)/categories/[...category]/page.tsx` | Passes `selectedCategory` from current category |
+
+---
+
 ## Where to Use Shared Components
 
 | Component | Current Consumers | Notes |
 |---|---|---|
-| `PageBanner` | About, Contact, FAQ, Terms, Returns, Seller Policy, Privacy, Featured Products, Track Order, Wishlist, Categories | Use for any page-level hero with breadcrumb |
+| `PageBanner` | About, Contact, FAQ, Terms, Returns, Seller Policy, Privacy, Featured Products, Track Order, Wishlist, Categories, Account | Use for any page-level hero with breadcrumb |
+| `CategoryBarCarousel` | Home, Store, Categories, Category Detail | Use for horizontal category navigation under the header |
 
 ### Account Page Consumer Notes
 

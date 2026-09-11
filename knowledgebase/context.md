@@ -544,15 +544,8 @@ Detailed site-structure docs live in `knowledgebase/site-structure/`:
 - `storefront.md` — Storefront layout, modules, icons, env, TS/sitemap config
 - `storefront-routing.md` — Next.js App Router: route groups, parallel slots, `generateStaticParams`, loading/not-found
 - `components.md` — Component catalog and patterns
-- `cart-and-checkout-behavior.md` — Cart dropdown timer, mismatch banner, free-shipping nudge, checkout step routing, payment-return state machine
-- `storefront-pdp.md` — Product detail page: 3-column layout, variant selection, mobile actions, product tabs, related products
-- `storefront-listing.md` — Store/collection/category listing: PaginatedProducts, RefinementList, sort/page/optionValueIds
-- `storefront-checkout-architecture.md` — Checkout form deep dive: addresses, shipping (pickup split), payment (Stripe Elements), review step
-- `storefront-account.md` — Account layout, nav, overview dashboard, profile editing Disclosure pattern
-- `storefront-order.md` — Order confirmation vs details, transfer flow, onboarding CTA
-- `storefront-cart.md` — Cart page templates, item updates, preview, getCheckoutStep
-- `storefront-middleware.md` — Edge runtime, region resolution, cache strategy, matcher rationale
-- `sort-filter-and-search-params.md` — `sortBy` / `page` / `optionValueIds` URL contract, `listProductsWithSort`, refinement list
+- `storefront-checkout-architecture.md` — Cart dropdown timer, mismatch banner, free-shipping nudge, checkout step routing, payment-return state machine, cart page template, CartTotals, order confirmation, order details, order transfer
+- `store-and-products.md` — Product cards, store/collection/category listing, `PaginatedProducts`, `RefinementList`, `sortBy` / `page` / `optionValueIds` URL contract, `listProductsWithSort`, product rails, related products, product detail page (PDP)
 - `ui-primitives-and-modals.md` — Local UI kit, `Input` floating-label contract, `Modal` API, form-modal pattern
 - `api-routes.md` — File-based API routing conventions and core endpoints
 - `data-layer.md` — Data fetching via server actions + SDK + caching

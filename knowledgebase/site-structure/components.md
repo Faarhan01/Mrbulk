@@ -88,6 +88,7 @@ import { Text, Heading, Button, clx } from "@modules/common/components/ui"
 | `Modal` | `modules/common/components/modal/` | `@headlessui/react` modal |
 | `NativeSelect` | `modules/common/components/native-select/` | Native select dropdown |
 | `PageBanner` | `modules/common/components/shared/page-banner/` | Page header with breadcrumb, title, description, badge |
+| `CategoryBarCarousel` | `modules/common/components/shared/category-bar/` | Horizontal scrollable category navigation with scroll controls |
 | `Radio` | `modules/common/components/radio/` | Custom radio button |
 | `Input` | `modules/common/components/input/` | Floating-label input |
 
@@ -340,6 +341,6 @@ Where applicable, the `Object.assign` compound-component pattern is used (e.g. `
 
 ## Related Files
 
-- `cart-and-checkout-behavior.md` — how `CartDropdown`'s 5s auto-open, `CartMismatchBanner`, `FreeShippingPriceNudge`, and the checkout step routing actually behave.
+- `storefront-checkout-architecture.md` — how `CartDropdown`'s 5s auto-open, `CartMismatchBanner`, `FreeShippingPriceNudge`, checkout step routing, payment-return state machine, cart page template, and `CartTotals` work.
 - `ui-primitives-and-modals.md` — the `Input` floating-label CSS contract, `Modal` API, and the canonical form-modal pattern using `useActionState` + `useToggleState` (see `add-address.tsx`, `edit-address-modal.tsx`).
-- `sort-filter-and-search-params.md` — the `sortBy` / `page` / `optionValueIds` URL contract consumed by `<RefinementList>`, `<SortProducts>`, `<OptionsPicker>`, `<Pagination>`.
+- `store-and-products.md` — the `sortBy` / `page` / `optionValueIds` URL contract consumed by `<RefinementList>`, `<SortProducts>`, `<OptionsPicker>`, `<Pagination>`, plus `listProductsWithSort`, product cards, and archive patterns.

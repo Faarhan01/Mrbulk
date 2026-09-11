@@ -23,28 +23,34 @@ async function getRegionMap(cacheId: string) {
     !regionMap.keys().next().value ||
     regionMapUpdated < Date.now() - 3600 * 1000
   ) {
-    // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
-    const response = await fetch(`${BACKEND_URL}/store/regions`, {
-      method: "GET",
-      headers: {
-        "x-publishable-api-key": PUBLISHABLE_API_KEY!,
-      },
-      next: {
-        revalidate: 3600,
-        tags: [`regions-${cacheId}`],
-      },
-      cache: "force-cache",
-    })
+    let regions: HttpTypes.StoreRegion[] = []
 
-    if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`)
+    try {
+      // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
+      const response = await fetch(`${BACKEND_URL}/store/regions`, {
+        method: "GET",
+        headers: {
+          "x-publishable-api-key": PUBLISHABLE_API_KEY!,
+        },
+        next: {
+          revalidate: 3600,
+          tags: [`regions-${cacheId}`],
+        },
+        cache: "force-cache",
+      })
+
+      if (!response.ok) {
+        throw new Error(`Backend returned ${response.status}`)
+      }
+
+      const json = await response.json()
+      regions = json.regions ?? []
+    } catch (error) {
+      console.error("Failed to fetch regions from backend during startup:", error)
+      return new Map<string, HttpTypes.StoreRegion>()
     }
 
-    const json = await response.json()
-
-    const { regions } = json
-
-    if (!regions?.length) {
+    if (!regions.length) {
       return new Map<string, HttpTypes.StoreRegion>()
     }
 

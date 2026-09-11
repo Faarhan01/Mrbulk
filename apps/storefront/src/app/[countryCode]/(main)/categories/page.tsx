@@ -3,6 +3,7 @@ import PageBanner from "@modules/common/components/shared/page-banner"
 
 import { listCategories } from "@lib/data/categories"
 import { notFound } from "next/navigation"
+import CategoryBarCarousel from "@modules/common/components/shared/category-bar"
 
 export const metadata: Metadata = {
   title: "Categories",
@@ -19,6 +20,7 @@ export default async function CategoriesPage() {
   return (
     <div className="w-full">
       <PageBanner title="Categories" description="Browse all product categories." />
+      <CategoryBarCarousel categories={productCategories} />
       <div className="w-full flex justify-center px-8 py-12">
         <div className="max-w-3xl w-full">
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
