@@ -5,7 +5,6 @@ import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
-import { redirect } from "next/navigation"
 import {
   getAuthHeaders,
   getCacheOptions,
@@ -247,7 +246,7 @@ export async function confirmEmailVerification(
   }
 }
 
-export async function signout(countryCode: string) {
+export async function signout() {
   await sdk.auth.logout()
 
   await removeAuthToken()
@@ -259,8 +258,6 @@ export async function signout(countryCode: string) {
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
-
-  redirect(`/${countryCode}/account`)
 }
 
 export async function transferCart() {

@@ -24,10 +24,10 @@ const AccountDashboardShell = ({
   const { activeTab } = useAccountTab()
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 space-y-6">
       {activeTab === "profile" && (
-        <div className="w-full" data-testid="profile-page-wrapper">
-          <div className="mb-8 flex flex-col gap-y-4">
+        <div className="checkout-step-surface w-full space-y-6" data-testid="profile-page-wrapper">
+          <div className="flex flex-col gap-y-4">
             <h1 className="text-2xl-semi">Profile</h1>
             <p className="text-base-regular">
               View and update your profile information, including your name, email,
@@ -48,8 +48,8 @@ const AccountDashboardShell = ({
       )}
 
       {activeTab === "orders" && (
-        <div className="w-full" data-testid="orders-page-wrapper">
-          <div className="mb-8 flex flex-col gap-y-4">
+        <div className="checkout-step-surface w-full space-y-6" data-testid="orders-page-wrapper">
+          <div className="flex flex-col gap-y-4">
             <h1 className="text-2xl-semi">Orders</h1>
             <p className="text-base-regular">
               View your previous orders and their status. You can also create
@@ -65,8 +65,8 @@ const AccountDashboardShell = ({
       )}
 
       {activeTab === "addresses" && (
-        <div className="w-full" data-testid="addresses-page-wrapper">
-          <div className="mb-8 flex flex-col gap-y-4">
+        <div className="checkout-step-surface w-full space-y-6" data-testid="addresses-page-wrapper">
+          <div className="flex flex-col gap-y-4">
             <h1 className="text-2xl-semi">Shipping Addresses</h1>
             <p className="text-base-regular">
               View and update your shipping addresses, you can add as many as you

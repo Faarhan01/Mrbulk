@@ -34,8 +34,12 @@ const AccountLayoutInner = ({
       />
       <div className="content-container bg-white flex flex-col">
         <div className="max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
-            <div>{customer && <AccountNav customer={customer} activeTab={activeTab} />}</div>
+          <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12 gap-6">
+            <div>
+              <div className="sidebar-panel-surface p-3 sm:p-4">
+                {customer && <AccountNav customer={customer} activeTab={activeTab} />}
+              </div>
+            </div>
             <div className="flex-1">{children}</div>
           </div>
           <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-gray-200 py-12 gap-8">
