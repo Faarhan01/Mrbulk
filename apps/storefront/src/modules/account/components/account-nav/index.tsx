@@ -3,26 +3,34 @@
 import { ArrowRightOnRectangle } from "@medusajs/icons"
 import { clx } from "@modules/common/components/ui"
 import { useParams, usePathname } from "next/navigation"
+import { useAccountTab } from "./account-tab-context"
 
 import { signout } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import ChevronDown from "@modules/common/icons/chevron-down"
+import ChevronRight from "@modules/common/icons/chevron-down"
 import MapPin from "@modules/common/icons/map-pin"
 import Package from "@modules/common/icons/package"
 import User from "@modules/common/icons/user"
 
 const AccountNav = ({
   customer,
+  activeTab,
 }: {
   customer: HttpTypes.StoreCustomer | null
+  activeTab?: string
 }) => {
   const route = usePathname()
   const { countryCode } = useParams() as { countryCode: string }
+  const { setActiveTab } = useAccountTab()
 
   const handleLogout = async () => {
     await signout(countryCode)
   }
+
+  const isDashboardActive = !route.includes("/account/profile") &&
+    !route.includes("/account/orders") &&
+    !route.includes("/account/addresses")
 
   return (
     <div>
@@ -46,9 +54,10 @@ const AccountNav = ({
             <div className="text-base-regular">
               <ul>
                 <li>
-                  <LocalizedClientLink
-                    href="/account/profile"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("profile")}
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full text-left"
                     data-testid="profile-link"
                   >
                     <>
@@ -58,12 +67,13 @@ const AccountNav = ({
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
-                  </LocalizedClientLink>
+                  </button>
                 </li>
                 <li>
-                  <LocalizedClientLink
-                    href="/account/addresses"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("addresses")}
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full text-left"
                     data-testid="addresses-link"
                   >
                     <>
@@ -73,12 +83,13 @@ const AccountNav = ({
                       </div>
                       <ChevronDown className="transform -rotate-90" />
                     </>
-                  </LocalizedClientLink>
+                  </button>
                 </li>
                 <li>
-                  <LocalizedClientLink
-                    href="/account/orders"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("orders")}
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full text-left"
                     data-testid="orders-link"
                   >
                     <div className="flex items-center gap-x-2">
@@ -86,13 +97,13 @@ const AccountNav = ({
                       <span>Orders</span>
                     </div>
                     <ChevronDown className="transform -rotate-90" />
-                  </LocalizedClientLink>
+                  </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
                     onClick={handleLogout}
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
                     data-testid="logout-button"
                   >
                     <div className="flex items-center gap-x-2">
@@ -115,40 +126,55 @@ const AccountNav = ({
           <div className="text-base-regular">
             <ul className="flex mb-0 justify-start items-start flex-col gap-y-4">
               <li>
-                <AccountNavLink
-                  href="/account"
-                  route={route!}
-                  data-testid="overview-link"
-                >
-                  Overview
-                </AccountNavLink>
-              </li>
-              <li>
-                <AccountNavLink
-                  href="/account/profile"
-                  route={route!}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("profile")}
+                  className={clx(
+                    "flex items-center gap-x-2 text-left",
+                    {
+                      "text-ui-fg-base font-semibold": isDashboardActive || activeTab === "profile",
+                    },
+                    { "text-ui-fg-subtle hover:text-ui-fg-base": !isDashboardActive && activeTab !== "profile" }
+                  )}
                   data-testid="profile-link"
                 >
-                  Profile
-                </AccountNavLink>
+                  <User size={20} />
+                  <span>Profile</span>
+                </button>
               </li>
               <li>
-                <AccountNavLink
-                  href="/account/addresses"
-                  route={route!}
-                  data-testid="addresses-link"
-                >
-                  Addresses
-                </AccountNavLink>
-              </li>
-              <li>
-                <AccountNavLink
-                  href="/account/orders"
-                  route={route!}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("orders")}
+                  className={clx(
+                    "flex items-center gap-x-2 text-left",
+                    {
+                      "text-ui-fg-base font-semibold": activeTab === "orders",
+                    },
+                    { "text-ui-fg-subtle hover:text-ui-fg-base": activeTab !== "orders" }
+                  )}
                   data-testid="orders-link"
                 >
-                  Orders
-                </AccountNavLink>
+                  <Package size={20} />
+                  <span>Orders</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("addresses")}
+                  className={clx(
+                    "flex items-center gap-x-2 text-left",
+                    {
+                      "text-ui-fg-base font-semibold": activeTab === "addresses",
+                    },
+                    { "text-ui-fg-subtle hover:text-ui-fg-base": activeTab !== "addresses" }
+                  )}
+                  data-testid="addresses-link"
+                >
+                  <MapPin size={20} />
+                  <span>Addresses</span>
+                </button>
               </li>
               <li className="text-grey-700">
                 <button
@@ -164,35 +190,6 @@ const AccountNav = ({
         </div>
       </div>
     </div>
-  )
-}
-
-type AccountNavLinkProps = {
-  href: string
-  route: string
-  children: React.ReactNode
-  "data-testid"?: string
-}
-
-const AccountNavLink = ({
-  href,
-  route,
-  children,
-  "data-testid": dataTestId,
-}: AccountNavLinkProps) => {
-  const { countryCode }: { countryCode: string } = useParams()
-
-  const active = route.split(countryCode)[1] === href
-  return (
-    <LocalizedClientLink
-      href={href}
-      className={clx("text-ui-fg-subtle hover:text-ui-fg-base", {
-        "text-ui-fg-base font-semibold": active,
-      })}
-      data-testid={dataTestId}
-    >
-      {children}
-    </LocalizedClientLink>
   )
 }
 

@@ -1,8 +1,11 @@
+"use client"
+
 import React from "react"
 
 import UnderlineLink from "@modules/common/components/interactive-link"
 
 import AccountNav from "../components/account-nav"
+import { AccountTabProvider, useAccountTab } from "../components/account-nav/account-tab-context"
 import { HttpTypes } from "@medusajs/types"
 import PageBanner from "@modules/common/components/shared/page-banner"
 
@@ -11,10 +14,12 @@ interface AccountLayoutProps {
   children: React.ReactNode
 }
 
-const AccountLayout: React.FC<AccountLayoutProps> = ({
+const AccountLayoutInner = ({
   customer,
   children,
-}) => {
+}: AccountLayoutProps) => {
+  const { activeTab } = useAccountTab()
+
   return (
     <div data-testid="account-page">
       <PageBanner
@@ -30,7 +35,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
       <div className="content-container bg-white flex flex-col">
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
-            <div>{customer && <AccountNav customer={customer} />}</div>
+            <div>{customer && <AccountNav customer={customer} activeTab={activeTab} />}</div>
             <div className="flex-1">{children}</div>
           </div>
           <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-gray-200 py-12 gap-8">
@@ -50,6 +55,14 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
         </div>
       </div>
     </div>
+  )
+}
+
+const AccountLayout = ({ customer, children }: AccountLayoutProps) => {
+  return (
+    <AccountTabProvider defaultTab="profile">
+      <AccountLayoutInner customer={customer}>{children}</AccountLayoutInner>
+    </AccountTabProvider>
   )
 }
 
