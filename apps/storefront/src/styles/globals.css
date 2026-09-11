@@ -1,9 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&display=swap');
+
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
 :root {
-  /* Form / input tokens (preset has none) */
+  /* Font tokens (reference uses Plus Jakarta Sans + Inter + JetBrains Mono) */
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-weight-black: 750;
+  --font-weight-extrabold: 700;
+  --font-weight-bold: 600;
   --input-bg: #ffffff;
   --input-bg-subtle: #f8fafc;
   --input-border: #cbd5e1;
@@ -44,15 +51,15 @@
   --radius-2xl: 1.5rem;
   --radius-full: 9999px;
 
-  /* Category bar tokens (reference: slate-100/200, slate-700/200, slate-200/700 borders) */
-  --cat-inactive-bg: #f1f5f9;
-  --cat-inactive-text: #334155;
-  --cat-inactive-border: #e2e8f0;
+  /* Category bar tokens (reference: bg-slate-100/90, border-slate-200/70, text-slate-700/200) */
+  --cat-inactive-bg: rgba(241, 245, 249, 0.9);
+  --cat-inactive-text: #475569;
+  --cat-inactive-border: rgba(226, 232, 240, 0.6);
   --cat-active-bg: #2563eb;
   --cat-active-text: #ffffff;
-  --cat-inactive-hover-bg: #e2e8f0;
+  --cat-inactive-hover-bg: rgba(226, 232, 240, 0.94);
   --cat-inactive-hover-text: #0f172a;
-  --cat-inactive-hover-border: #bfdbfe;
+  --cat-inactive-hover-border: rgba(226, 232, 240, 0.8);
   --cat-btn-shadow-rest: 0 1px 2px 0 rgba(0,0,0,.04), 0 1px 2px -1px rgba(0,0,0,.03);
   --cat-btn-shadow-hover: 0 1px 3px 0 rgba(0,0,0,.08), 0 1px 2px -1px rgba(0,0,0,.04);
 
@@ -129,14 +136,14 @@
   --focus-ring: rgba(59, 130, 246, 0.5);
 
   /* Category bar dark mode */
-  --cat-inactive-bg: #1e293b;
-  --cat-inactive-text: #cbd5e1;
-  --cat-inactive-border: #334155;
+  --cat-inactive-bg: rgba(30, 41, 59, 0.88);
+  --cat-inactive-text: #e2e8f0;
+  --cat-inactive-border: rgba(51, 65, 85, 0.55);
   --cat-active-bg: #2563eb;
   --cat-active-text: #ffffff;
-  --cat-inactive-hover-bg: #334155;
+  --cat-inactive-hover-bg: rgba(51, 65, 85, 0.88);
   --cat-inactive-hover-text: #f1f5f9;
-  --cat-inactive-hover-border: #1e40af;
+  --cat-inactive-hover-border: rgba(51, 65, 85, 0.8);
   --cat-btn-shadow-rest: 0 1px 2px 0 rgba(0,0,0,.3), 0 1px 2px -1px rgba(0,0,0,.25);
   --cat-btn-shadow-hover: 0 1px 3px 0 rgba(0,0,0,.4), 0 1px 2px -1px rgba(0,0,0,.3);
 }
@@ -145,6 +152,7 @@
   *, *::before, *::after { box-sizing: border-box; }
 
   html {
+    font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
@@ -155,6 +163,7 @@
   body {
     background-color: var(--bg-base);
     color: var(--fg-base);
+    line-height: 1.6;
     min-height: 100vh;
   }
 

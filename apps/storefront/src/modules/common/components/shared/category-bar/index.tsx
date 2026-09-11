@@ -130,9 +130,19 @@ const CategoryBarCarousel = ({
           disabled={!canScrollLeft}
           aria-label="Scroll left"
           className={clx(
-            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10 cat-btn",
+            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10",
             !canScrollLeft && "opacity-30 cursor-not-allowed pointer-events-none"
           )}
+          style={
+            canScrollLeft
+              ? {
+                  backgroundColor: "var(--cat-inactive-bg)",
+                  color: "var(--cat-inactive-text)",
+                  borderColor: "var(--cat-inactive-border)",
+                  boxShadow: "var(--cat-btn-shadow-rest)",
+                }
+              : undefined
+          }
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -194,9 +204,19 @@ const CategoryBarCarousel = ({
           disabled={!canScrollRight}
           aria-label="Scroll right"
           className={clx(
-            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10 cat-btn",
+            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10",
             !canScrollRight && "opacity-30 cursor-not-allowed pointer-events-none"
           )}
+          style={
+            canScrollRight
+              ? {
+                  backgroundColor: "var(--cat-inactive-bg)",
+                  color: "var(--cat-inactive-text)",
+                  borderColor: "var(--cat-inactive-border)",
+                  boxShadow: "var(--cat-btn-shadow-rest)",
+                }
+              : undefined
+          }
         >
           <ChevronRight className="w-4 h-4" />
         </button>
