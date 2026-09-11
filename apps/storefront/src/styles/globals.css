@@ -136,7 +136,9 @@
   --cat-active-text: #ffffff;
   --cat-inactive-hover-bg: #334155;
   --cat-inactive-hover-text: #f1f5f9;
-  --cat-btn-shadow: 0 1px 2px 0 rgba(0,0,0,.3), 0 1px 2px -1px rgba(0,0,0,.25);
+  --cat-inactive-hover-border: #1e40af;
+  --cat-btn-shadow-rest: 0 1px 2px 0 rgba(0,0,0,.3), 0 1px 2px -1px rgba(0,0,0,.25);
+  --cat-btn-shadow-hover: 0 1px 3px 0 rgba(0,0,0,.4), 0 1px 2px -1px rgba(0,0,0,.3);
 }
 
 @layer base {
@@ -861,6 +863,55 @@ h1, h2, h3 { text-wrap: balance; }
 
   .btn-icon-circle {
     border-radius: var(--radius-full);
+  }
+
+  /* Category bar buttons (reference category-bar: slate-100/800, slate-700/200, blue-600 active) */
+  .cat-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid var(--cat-inactive-border);
+    background-color: var(--cat-inactive-bg);
+    color: var(--cat-inactive-text);
+    box-shadow: var(--cat-btn-shadow-rest);
+  }
+
+  .cat-btn:hover:not(:disabled) {
+    background-color: var(--cat-inactive-hover-bg);
+    color: var(--cat-inactive-hover-text);
+    border-color: var(--cat-inactive-hover-border);
+    box-shadow: var(--cat-btn-shadow-hover);
+  }
+
+  .cat-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .cat-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .cat-btn-active {
+    background-color: var(--cat-active-bg);
+    color: var(--cat-active-text);
+    border-color: transparent;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+  }
+
+  .cat-btn-active:hover {
+    background-color: var(--cat-active-bg);
+    color: var(--cat-active-text);
+    border-color: transparent;
   }
 
   /* Badges (reference .badge .badge-sale .badge-new .badge-success .badge-warning .badge-danger) */

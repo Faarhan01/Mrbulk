@@ -130,21 +130,9 @@ const CategoryBarCarousel = ({
           disabled={!canScrollLeft}
           aria-label="Scroll left"
           className={clx(
-            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10",
-            canScrollLeft
-              ? "opacity-100 hover:opacity-80"
-              : "opacity-30 cursor-not-allowed pointer-events-none"
+            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10 cat-btn",
+            !canScrollLeft && "opacity-30 cursor-not-allowed pointer-events-none"
           )}
-          style={
-            canScrollLeft
-              ? {
-                  backgroundColor: "var(--cat-inactive-bg)",
-                  color: "var(--cat-inactive-text)",
-                  borderColor: "var(--cat-inactive-border)",
-                  boxShadow: "var(--cat-btn-shadow)",
-                }
-              : undefined
-          }
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -180,24 +168,9 @@ const CategoryBarCarousel = ({
                 type="button"
                 onClick={() => handleClick(cat.name, cat.handle)}
                 className={clx(
-                  "shrink-0 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-95",
-                  isSelected
-                    ? "text-white shadow-sm"
-                    : "hover:opacity-80"
+                  "shrink-0 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap active:scale-95 cat-btn",
+                  isSelected && "cat-btn-active"
                 )}
-                style={
-                  isSelected
-                    ? {
-                        backgroundColor: "var(--cat-active-bg)",
-                        color: "var(--cat-active-text)",
-                      }
-                    : {
-                        backgroundColor: "var(--cat-inactive-bg)",
-                        color: "var(--cat-inactive-text)",
-                        border: "1px solid var(--cat-inactive-border)",
-                        boxShadow: "var(--cat-btn-shadow)",
-                      }
-                }
               >
                 {cat.name}
               </button>
@@ -221,21 +194,9 @@ const CategoryBarCarousel = ({
           disabled={!canScrollRight}
           aria-label="Scroll right"
           className={clx(
-            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10",
-            canScrollRight
-              ? "opacity-100 hover:opacity-80"
-              : "opacity-30 cursor-not-allowed pointer-events-none"
+            "shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer select-none active:scale-95 z-10 cat-btn",
+            !canScrollRight && "opacity-30 cursor-not-allowed pointer-events-none"
           )}
-          style={
-            canScrollRight
-              ? {
-                  backgroundColor: "var(--cat-inactive-bg)",
-                  color: "var(--cat-inactive-text)",
-                  borderColor: "var(--cat-inactive-border)",
-                  boxShadow: "var(--cat-btn-shadow)",
-                }
-              : undefined
-          }
         >
           <ChevronRight className="w-4 h-4" />
         </button>
