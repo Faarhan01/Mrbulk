@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document catalogs every change made to the **backend** (`apps/backend`) that diverges from the upstream `medusajs/dtc-starter` baseline. The audit was conducted on 2026-09-06 against the fresh `create-medusa-app@2.20.1` install.
+This document catalogs every change made to the **backend** (`apps/backend`) that diverges from the upstream `medusajs/dtc-starter` baseline. The audit was conducted on 2026-09-06 and updated on 2026-09-12 against the fresh `create-medusa-app@2.21.0` install.
 
 **TL;DR: No backend changes were made.** The backend runs unmodified from the upstream baseline.
 
 ## What Was Audited
 
-The following backend areas were inspected during the audit. Each was compared with upstream `medusajs/dtc-starter` and confirmed identical to the upstream baseline as of Medusa 2.20.1:
+The following backend areas were inspected during the audit. Each was compared with upstream `medusajs/dtc-starter` and confirmed identical to the upstream baseline as of Medusa 2.21.0:
 
 ### `apps/backend/src/`
 | Area | Files audited | Status |
@@ -89,7 +89,7 @@ When making backend changes, always:
 
 ## Related Documents
 
-- `frontend-fixes.md` — the audit of storefront fixes (BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-13, BUG-14, BUG-15 applied; BUG-07 no fix needed; BUG-08 through BUG-12 not fixed)
+- `frontend-fixes.md` — the audit of storefront fixes (BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-08, BUG-09, BUG-10, BUG-11, BUG-12, BUG-13, BUG-14, BUG-15, BUG-16, BUG-17 applied; BUG-07 no fix needed; MONITOR-01 monitoring required)
 - `../site-structure/backend.md` — the baseline backend layout (no diffs from upstream).
 - `../site-structure/data-layer.md` — how the storefront talks to the backend (server actions + SDK + caching).
 - `../site-structure/api-routes.md` — the file-based routing convention.

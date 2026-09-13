@@ -185,6 +185,7 @@ src/
 - Use the existing module alias imports (`@modules/...`, `@lib/...`). Do not add new path aliases.
 - Reuse existing UI primitives from `src/modules/common/components/ui/` (Button, Heading, Badge, Text, Input, etc.). Do not introduce new UI libraries.
 - For modals, use the existing `Modal` component from `@modules/common/components/modal`. Pass `size="large"` only when the form content genuinely needs more width (e.g., address forms with multiple columns).
+- When changing a prop's behavior in a component, keep the prop in the type signature even if it becomes unused. Do not remove props and cascade changes to every call site unless the prop is being completely removed from the API design. Minimizing the diff is preferred over "cleaning up" unused props.
 
 **Example — widening a modal:**
 ```tsx

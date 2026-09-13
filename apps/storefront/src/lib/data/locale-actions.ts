@@ -7,16 +7,32 @@ import { getAuthHeaders, getCacheTag, getCartId } from "./cookies"
 
 const LOCALE_COOKIE_NAME = "_medusa_locale"
 
+let cachedLocale: string | null = null
+let cachedAt = 0
+const CACHE_TTL_MS = 5000
+let hasFetched = false
+
 /**
  * Gets the current locale from cookies
  */
 export const getLocale = async (): Promise<string | null> => {
+  const now = Date.now()
+
+  if (hasFetched && now - cachedAt < CACHE_TTL_MS) {
+    return cachedLocale
+  }
+
   try {
     const cookies = await nextCookies()
-    return cookies.get(LOCALE_COOKIE_NAME)?.value ?? null
+    cachedLocale = cookies.get(LOCALE_COOKIE_NAME)?.value ?? null
   } catch {
-    return null
+    cachedLocale = null
   }
+
+  cachedAt = now
+  hasFetched = true
+
+  return cachedLocale
 }
 
 /**

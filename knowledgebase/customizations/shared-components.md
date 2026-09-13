@@ -169,6 +169,8 @@ import CategoryBarCarousel from "@modules/common/components/shared/category-bar"
 |---|---|---|
 | `PageBanner` | About, Contact, FAQ, Terms, Returns, Seller Policy, Privacy, Featured Products, Track Order, Wishlist, Categories, Account | Use for any page-level hero with breadcrumb |
 | `CategoryBarCarousel` | Home, Store, Categories, Category Detail | Use for horizontal category navigation under the header |
+| `FAQSection` | Account (footer block) | Use for "Got questions?" footer section with link to FAQ page |
+| `FAQSection` | Account (footer block) | Reusable "Got questions?" section with title, description, and FAQ link |
 
 ### Account Page Consumer Notes
 
@@ -178,6 +180,32 @@ The account page (`modules/account/templates/account-layout.tsx`) uses `PageBann
 - The account nav, main content, and footer block are wrapped in a separate `content-container` + `max-w-7xl mx-auto w-full` div for readability.
 - The welcome message was moved from `modules/account/components/overview/index.tsx` into the banner via `title` and `description` props.
 - When the user is logged out, the banner shows `title="Account"` and `description="Please login or sign up to continue"`.
+
+### FAQSection
+
+**Location**: `src/modules/common/components/shared/faq-section/index.tsx`
+**Type**: Server component (no `"use client"`)
+**Purpose**: Reusable "Got questions?" section with a title, description text, and a link to the FAQ page. Rendered in a bordered card.
+
+#### Props
+
+None — the component is self-contained.
+
+#### Usage
+
+```tsx
+import FAQSection from "@modules/common/components/shared/faq-section"
+
+<FAQSection />
+```
+
+#### Consumers
+
+| Page | Path | Notes |
+|---|---|---|
+| Account | `modules/account/templates/account-layout.tsx` | Rendered as the footer block after the main account content |
+
+---
 
 ## Adding a New Shared Component
 

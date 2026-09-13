@@ -39,7 +39,7 @@ const AccountNav = ({
   return (
     <div>
       <div
-        className="flex lg:flex-col gap-2 lg:gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-none"
+        className="flex lg:flex-col gap-2 lg:gap-1.5 overflow-x-auto lg:overflow-x-visible scrollbar-none"
         data-testid="account-nav"
       >
         {tabs.map((tab) => {

@@ -107,7 +107,9 @@ async function getCountryCode(
  * Middleware to handle region selection and onboarding status.
  */
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.includes(".")) {
+  const { pathname } = request.nextUrl
+
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next()
   }
 
@@ -144,6 +146,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
+    "/((?!api|_next|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp|_vercel).*)",
   ],
 }

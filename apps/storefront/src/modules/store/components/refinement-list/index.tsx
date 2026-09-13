@@ -64,7 +64,7 @@ const RefinementList = ({
     })
 
   return (
-    <div className="flex flex-col gap-12 py-4 mb-8 small:px-0 pl-6 small:min-w-[250px] small:ml-[1.675rem]">
+    <div className="flex flex-col gap-8 py-5 mb-8 pl-6 small:px-5 small:mr-8 small:min-w-[250px] small:ml-[1.675rem] bg-ui-bg-base border border-ui-border-base rounded-large shadow-elevation-card-rest">
       <SortProducts
         sortBy={sortBy}
         setQueryParams={setQueryParams}

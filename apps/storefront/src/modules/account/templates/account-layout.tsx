@@ -2,13 +2,12 @@
 
 import React from "react"
 
-import UnderlineLink from "@modules/common/components/interactive-link"
-
 import AccountNav from "../components/account-nav"
 import { AccountTabProvider, useAccountTab } from "../components/account-nav/account-tab-context"
 import { HttpTypes } from "@medusajs/types"
 import PageBanner from "@modules/common/components/shared/page-banner"
 import { clx } from "@modules/common/components/ui"
+import FAQSection from "@modules/common/components/shared/faq-section"
 
 interface AccountLayoutProps {
   customer: HttpTypes.StoreCustomer | null
@@ -45,19 +44,8 @@ const AccountLayoutInner = ({
             )}
             <div className="flex-1">{children}</div>
           </div>
-          <div className="flex flex-col small:flex-row items-center justify-center small:border-t border-gray-200 py-12 gap-8">
-            <div>
-              <h3 className="text-xl-semi mb-4">Got questions?</h3>
-              <span className="txt-medium">
-                You can find frequently asked questions and answers on our
-                customer service page.
-              </span>
-            </div>
-            <div>
-              <UnderlineLink href="/customer-service">
-                Customer Service
-              </UnderlineLink>
-            </div>
+          <div className="flex flex-col small:flex-row items-center justify-center small:border-t border-subtle py-12 gap-8">
+              <FAQSection />
           </div>
         </div>
       </div>

@@ -328,6 +328,7 @@ Do not mix `txt-medium` with `text-base-regular` on the same element — they ha
 - Page content wrapper: `w-full flex justify-center px-8 py-12`
 - Content container: `max-w-3xl w-full` for text-heavy pages
 - Use `content-container` class inside templates for consistent horizontal padding.
+- Archive templates (`StoreTemplate`, `CategoryTemplate`, `CollectionTemplate`) must use `py-6`, not `pb-6`. The top padding separates the refinement sidebar from the carousel/header above it; bottom padding separates the product grid from the footer below. All three archive templates share the same vertical rhythm.
 
 ### Images and Media
 

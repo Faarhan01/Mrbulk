@@ -1,6 +1,6 @@
 import repeat from "@lib/util/repeat"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Table } from "@modules/common/components/ui"
+import { Heading, Table, Text } from "@modules/common/components/ui"
 
 import Item from "@modules/cart/components/item"
 import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
@@ -13,8 +13,11 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
   const items = cart?.items
   return (
     <div>
-      <div className="pb-3 flex items-center">
+      <div className="pb-3 flex items-center justify-between">
         <Heading className="text-[2rem] leading-[2.75rem]">Cart</Heading>
+        <Text className="txt-medium text-ui-fg-subtle" data-testid="cart-item-count">
+          {items?.length ?? 0} item{items?.length !== 1 ? "s" : ""} in your cart
+        </Text>
       </div>
       <Table>
         <Table.Header className="border-t-0">

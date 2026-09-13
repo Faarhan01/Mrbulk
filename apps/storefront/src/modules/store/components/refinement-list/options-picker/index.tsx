@@ -51,13 +51,39 @@ const OptionsPicker = ({
   }, [options])
 
   if (!options.length) {
-    return null
+    return (
+      <div className="flex flex-col gap-y-4">
+        <div className="flex items-center justify-between px-1 mb-3">
+          <span className="txt-compact-small-plus text-ui-fg-base font-medium uppercase tracking-tight">
+            Options
+          </span>
+        </div>
+        <div className="flex flex-col gap-y-3 pr-6">
+          {[1, 2].map((skeleton) => (
+            <div
+              key={skeleton}
+              className="flex flex-col gap-y-2 animate-pulse"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-24 rounded bg-ui-bg-component" />
+                <div className="h-4 w-4 rounded bg-ui-bg-component" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-16 rounded-rounded bg-ui-bg-component" />
+                <div className="h-8 w-16 rounded-rounded bg-ui-bg-component" />
+                <div className="h-8 w-16 rounded-rounded bg-ui-bg-component" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between px-1">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
+      <div className="flex items-center justify-between px-1 mb-3">
+        <span className="txt-compact-small-plus text-ui-fg-base font-medium uppercase tracking-tight">
           Options
         </span>
       </div>
@@ -104,7 +130,7 @@ const OptionsPicker = ({
               className="overflow-hidden"
             >
               <Accordion.Header>
-                <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
+                <Accordion.Trigger className="flex w-full items-center justify-between px-3 py-2.5 rounded-base hover:bg-ui-bg-component-hover transition-colors duration-150 text-left">
                   <div className="flex items-center gap-2">
                     <span className="txt-compact-small-plus text-ui-fg-base">
                       {option.title || "Option"}
@@ -115,7 +141,7 @@ const OptionsPicker = ({
                   </div>
                   <span
                     className={clsx(
-                      "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
+                      "flex h-7 w-7 items-center justify-center rounded-base text-ui-fg-muted transition-transform duration-150",
                       {
                         "rotate-180": isOpen,
                       }

@@ -22,7 +22,9 @@ type Props = {
 }
 
 export async function generateStaticParams() {
-  const product_categories = await listCategories()
+  const product_categories = await listCategories({
+    fields: "id, name, handle, description",
+  })
 
   if (!product_categories) {
     return []
@@ -81,7 +83,9 @@ export default async function CategoryPage(props: Props) {
     notFound()
   }
 
-  const categories = await listCategories()
+  const categories = await listCategories({
+    fields: "id, name, handle, description",
+  })
 
   return (
     <>

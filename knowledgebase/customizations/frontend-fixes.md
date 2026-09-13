@@ -124,6 +124,26 @@
 
 ---
 
+### BUG-17 — Product images have non-square aspect ratio
+
+**Status: (Fixed)**
+
+**File:** `apps/storefront/src/modules/products/components/thumbnail/index.tsx` (line 32)
+
+**Symptom:** Product card images use `aspect-[11/14]` for featured products and `aspect-[9/16]` for non-featured products, creating tall rectangular containers that look disproportionate on the store page and homepage.
+
+**Fix Applied:** Changed all aspect ratio conditions to `aspect-[1/1]: true`, making every product thumbnail square. This is a visual improvement only — no data or behavior changes.
+
+---
+
+### Lesson Learned — Scope Discipline
+
+**Issue:** During the product thumbnail fix, the assistant initially removed the `isFeatured` prop from the `Thumbnail` component type and all its call sites. This cascaded into unnecessary changes across `product-preview/index.tsx`, `product-rail/index.tsx`, `order/components/item/index.tsx`, `cart/components/item/index.tsx`, and `cart-dropdown/index.tsx`.
+
+**Resolution:** Reverted all unnecessary changes back to committed state. Kept only the minimal aspect-ratio change in `thumbnail/index.tsx`. When a prop exists but becomes unused for a specific visual change, keep the prop interface intact and only change the styling logic. This avoids breaking downstream consumers and keeps diffs minimal.
+
+---
+
 ## Not Fixed (Upstream / Optional)
 
 ### BUG-07 — Profile email form is a no-op
@@ -201,4 +221,24 @@
 
 ---
 
-*Based on audit 2026-09-06. See `known-issues.md` for the full issue catalog, `rules.md` for editing guidelines, and `instructions.md` for how to make changes.*
+## Monitoring Items (v2.21.0 Allowlist)
+
+### MONITOR-01 — Store API strict allowlist may silently drop nested order/variant fields
+
+**Status: (Monitoring Required)**
+
+**Files:**
+- `apps/storefront/src/lib/data/orders.ts:21-22`
+- `apps/storefront/src/lib/data/orders.ts:52`
+
+**Symptom:** Medusa v2.21.0 enforces a strict allowlist on every Store API route. The `fields` selections in `orders.ts` use wildcard expansions (`*items.variant`, `*items.product`, `*payment_collections.payments`) that may silently drop nested fields not explicitly listed in the route's `allowed` array. The request still returns `200`, but the missing fields are absent from the JSON response.
+
+**Current Assessment:** Static audit against the installed v2.21.0 allowlist shows the base relations (`items.variant`, `items.product`, `payment_collections.payments`) are allowed. However, deeper nested paths under these relations may be stripped if they are not explicitly listed. The storefront code that consumes these endpoints should be tested to verify all expected data is present at runtime.
+
+**Action Required:** After deployment, verify the order detail and order list pages render all expected data (variant details, product details, payment information). If fields are missing, add them back via the `allowFields` middleware in `apps/backend/src/api/middlewares.ts`.
+
+**Do not add allowlist entries speculatively.** Only add fields that are confirmed missing at runtime.
+
+---
+
+*Based on audit 2026-09-12. See `known-issues.md` for the full issue catalog, `rules.md` for editing guidelines, and `instructions.md` for how to make changes.*
