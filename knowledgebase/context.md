@@ -4,11 +4,12 @@
 1. [What Is MedusaJS](#what-is-medusajs)
 2. [This Installation (medusa-js)](#this-installation-medusa-js)
 3. [Fresh Installation Steps](#fresh-installation-steps)
-4. [Common Issues and Fixes](#common-issues-and-fixes)
-5. [Environment and Configuration Reference](#environment-and-configuration-reference)
-6. [Useful Commands](#useful-commands)
-7. [Official Documentation Links](#official-documentation-links)
-8. [Site Structure](#site-structure)
+4. [Duplicating This Site from GitHub](#duplicating-this-site-from-github)
+5. [Common Issues and Fixes](#common-issues-and-fixes)
+6. [Environment and Configuration Reference](#environment-and-configuration-reference)
+7. [Useful Commands](#useful-commands)
+8. [Official Documentation Links](#official-documentation-links)
+9. [Site Structure](#site-structure)
 
 ---
 
@@ -75,25 +76,7 @@ MedusaJS is an open-source digital commerce platform built on Node.js with a bui
 
 **Backend is 100% upstream stock.** The `apps/backend/` directory has not been modified since install.
 
-**Storefront has 17 local patches** applied on 2026-09-05 through 2026-09-12:
-- **BUG-01 (Fixed):** The upstream `Orders` page calls `listOrders()` without first checking auth; the call throws on 401, producing a 200 with a near-blank body. We added a `retrieveCustomer()` check + `notFound()` guard so anonymous visitors see a 404 instead of a broken page.
-- **BUG-02 (Fixed):** Modal panel `max-h-[75vh]` → `max-h-[90vh]` in `modal/index.tsx`.
-- **BUG-03 (Fixed):** Added `size="large"` to Add Address modal in `add-address.tsx`.
-- **BUG-04 (Fixed):** Added `size="large"` to Edit Address modal in `edit-address-modal.tsx`.
-- **BUG-05 (Fixed):** Changed `error: false` → `error: null as string | null` in `profile-billing-address/index.tsx`.
-- **BUG-06 (Fixed):** Changed `overflow-visible` → `overflow-hidden` in `account-info/index.tsx`.
-- **BUG-08 (Fixed):** Removed `@ts-ignore` comments in `language-select/index.tsx`.
-- **BUG-09 (Fixed):** Added `eslint-disable` block for `useEffect` missing deps in `shipping/index.tsx`.
-- **BUG-10 (Fixed):** Added `eslint-disable` block for `useEffect` missing deps in `shipping-address/index.tsx`.
-- **BUG-11 (Fixed):** Added `eslint-disable` block for `useEffect` missing deps in `product-actions/index.tsx`.
-- **BUG-12 (Fixed):** Fixed unused params and `any` types in `cart.ts`.
-- **BUG-13 (Fixed):** Added `*.tsbuildinfo` and `**/tsconfig.tsbuildinfo` to `.gitignore`.
-- **BUG-14 (Fixed):** Added `qualities: [25, 50, 75, 100]` to `next.config.js` images config.
-- **BUG-15 (Fixed):** Changed `overflow-visible` → `overflow-hidden` in `profile-name/index.tsx`.
-- **BUG-16 (Fixed):** Removed `redirect()` from `signout()` in `customer.ts` to fix malformed logout URLs.
-- **BUG-17 (Fixed):** Changed product thumbnail aspect ratios to `aspect-[1/1]: true` in `thumbnail/index.tsx`.
-
-**Scaffold state vs upstream main:** The 2.21.0 scaffold is **behind** upstream `main` on UI files `modal/index.tsx`, `add-address.tsx`, `edit-address-modal.tsx`, `profile-billing-address/index.tsx`, `account-info/index.tsx`, and `profile-name/index.tsx`. These have been locally patched. **Bug BUG-07 (profile-email) is already handled** by the scaffold — the API call is commented out and the form is a no-op.
+**Storefront has 17 local patches** documented in `customizations/frontend-fixes.md`. See that file for the full list with IDs, status, and fix details.
 
 For the full bug catalog with status, fix details, and root causes, see `customizations/known-issues.md` and `customizations/frontend-fixes.md`.
 
@@ -353,6 +336,125 @@ These only appear under specific circumstances. **Check first before fixing:**
 | What happened | Why it happened | What to do instead |
 |---|---|---|
 | Ran `pnpm run build` while `pnpm run dev` was active on 2026-09-05 | The production build overwrites `apps/storefront/.next/` which the dev server (Turbopack) uses. | Stop the dev server first, run the build, then restart. |
+
+---
+
+## Duplicating This Site from GitHub
+
+Use this workflow when you already have this repository cloned and want to set up a local copy on a new machine or for a collaborator.
+
+### Prerequisites
+1. **Node.js**: v24 LTS or lower for the Next.js starter storefront.
+2. **Git CLI**: for cloning the repository.
+3. **PostgreSQL**: installed and running.
+4. **Package Manager**: pnpm v11.x.
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <your-repo-url>
+cd medusa-js
+```
+
+### Step 2: Install Dependencies
+
+```bash
+pnpm install
+```
+
+This installs both backend and storefront dependencies using the existing `pnpm-workspace.yaml` config, including the `overrides` block for `@types/react@19.0.5`.
+
+### Step 3: Create the Database
+
+Create a new PostgreSQL database for this installation:
+
+```powershell
+Set-Content -Path "$env:TEMP\create_db.sql" -Value 'CREATE DATABASE "medusa_swift_canyon";'
+$env:PGPASSWORD = 'postgres'
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U postgres -f "$env:TEMP\create_db.sql"
+```
+
+Or use any other database name you prefer. If you use a different name, update `DATABASE_URL` in `apps/backend/.env`.
+
+### Step 4: Configure Environment Variables
+
+#### Backend (`apps/backend/.env`)
+Copy or create `apps/backend/.env` with at least these keys:
+
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/medusa_swift_canyon
+JWT_SECRET=supersecret
+COOKIE_SECRET=supersecret
+STORE_CORS=http://localhost:8000,https://docs.medusajs.com
+ADMIN_CORS=http://localhost:5173,http://localhost:9000,https://docs.medusajs.com
+AUTH_CORS=http://localhost:5173,http://localhost:9000,http://localhost:8000,https://docs.medusajs.com
+```
+
+#### Storefront (`apps/storefront/.env.local`)
+Copy or create `apps/storefront/.env.local`:
+
+```env
+NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_your_key_here
+NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000
+NEXT_PUBLIC_DEFAULT_REGION=dk
+NEXT_PUBLIC_BASE_URL=https://localhost:8000
+```
+
+The publishable API key is created automatically when you run migrations and seed in the next step. If you skipped seeding, retrieve it from the database:
+
+```sql
+SELECT token, title, type FROM api_key WHERE type = 'publishable';
+```
+
+### Step 5: Run Migrations and Seed Data
+
+```bash
+cd apps/backend
+pnpm exec medusa db:migrate
+```
+
+This runs module migrations, syncs links, and executes the initial data seed script (`initial-data-seed.ts`), which creates:
+
+- 1 region (Europe, EUR, 7 countries)
+- 1 stock location (Copenhagen)
+- 1 fulfillment set with 2 shipping options (Standard 2-3 days + Express 24h)
+- 4 product categories (Shirts, Sweatshirts, Pants, Merch)
+- 4 products (T-Shirt, Sweatshirt, Sweatpants, Shorts) with 20 variants total
+- 1 publishable API key
+- 1 store (EUR + USD)
+
+### Step 6: Create an Admin User
+
+```bash
+pnpm exec medusa user -e admin@test.com -p supersecret
+```
+
+### Step 7: Start Development Servers
+
+From the project root:
+
+```bash
+pnpm run dev               # both backend and storefront via Turbo
+pnpm run backend:dev       # backend only (http://localhost:9000)
+pnpm run storefront:dev    # storefront only (http://localhost:8000)
+```
+
+### Step 8: Verify the Setup
+
+| Service | URL |
+|---|---|
+| Storefront | http://localhost:8000 |
+| Backend API | http://localhost:9000 |
+| Admin Dashboard | http://localhost:9000/app |
+
+Log in to the admin with `admin@test.com` / `supersecret`.
+
+### Notes for Cloning
+
+- **Database**: You can reuse an existing database name if it already contains the seeded data. If you create a fresh DB, `db:migrate` will run the seed automatically.
+- **Publishable key**: The seed script creates a new publishable key on each fresh DB. After seeding, copy the key from the DB or admin UI into `apps/storefront/.env.local`.
+- **Ports**: Default ports are `9000` for backend and `8000` for storefront. Adjust `.env.local` and `next.config.js` if you need different ports.
+- **No additional patches needed**: This repo already contains all 17 local storefront patches and Medusa 2.21.0 backend. No manual patching is required after cloning.
 
 ---
 
